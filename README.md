@@ -10,6 +10,7 @@ It follows [Nix](https://nixos.org/guides/how-nix-works/)'s design: packages liv
 
 - `neki init`: create a project with a starter `neki.toml`
 - `neki info`: show the configuration and the current project's declaration (`--json` for machine-readable output)
+- `neki hash path <path>` and `neki hash file <file>`: SHA-256 of a file tree (as a NAR archive) or of a file's contents, printed in SRI form (`sha256-…`)
 - Parsing and validating `neki.toml` and `neki.lock`
 - **Neki Desktop App**: register projects, view and edit their `neki.toml` (validated before saving), and browse settings
 
@@ -77,7 +78,7 @@ There's no Neki package set yet, so the `pkgs` input above is a placeholder.
 |---|---|---|
 | `neki init` | Create a project | ✅ |
 | `neki info [--json]` | Show configuration and project | ✅ |
-| `neki hash path\|file` | Hash files and folders | M1 |
+| `neki hash path\|file` | Hash files and folders | ✅ |
 | `neki store add\|path-info\|verify` | Use the store directly | M2 |
 | `neki build [package]` | Build a package | M3 |
 | `neki develop`, `neki shell`, `neki run`, `neki lock` | Environments and lock files | M5 |

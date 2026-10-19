@@ -8,7 +8,7 @@ mod events;
 
 pub use config::Config;
 pub use events::{Event, EventSink, NullSink};
-pub use neki_hash::{Hash, StorePath};
+pub use neki_hash::{Hash, HashAlgo, Hasher, StorePath};
 pub use neki_platform::paths::user_config_dir;
 pub use neki_platform::shell::Shell;
 pub use neki_profile::{Generation, ShellEnv};
@@ -28,8 +28,15 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Project(#[from] neki_project::Error),
+    #[error("{}: {source}", path.display())]
+    File {
+        path: PathBuf,
+        source: std::io::Error,
+    },
     #[error(transparent)]
     Hash(#[from] neki_hash::Error),
+    #[error(transparent)]
+    Nar(#[from] neki_nar::Error),
     #[error(transparent)]
     Store(#[from] neki_store::Error),
     #[error(transparent)]
@@ -162,14 +169,25 @@ impl Neki {
         planned("M6")
     }
 
-    /// Hash of the NAR serialization of `path`.
+    /// SHA-256 of the NAR serialization of `path` (a file, directory or symlink).
     pub fn hash_path(&self, path: &Path) -> Result<Hash> {
-        planned("M1")
+        let mut hasher = Hasher::new(HashAlgo::Sha256);
+        neki_nar::dump(path, &mut hasher)?;
+        Ok(hasher.finish())
     }
 
-    /// Hash of the flat contents of the file at `path`.
+    /// SHA-256 of the flat contents of the file at `path`.
     pub fn hash_file(&self, path: &Path) -> Result<Hash> {
-        planned("M1")
+        let mut hasher = Hasher::new(HashAlgo::Sha256);
+        let mut file = std::fs::File::open(path).map_err(|source| Error::File {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        std::io::copy(&mut file, &mut hasher).map_err(|source| Error::File {
+            path: path.to_path_buf(),
+            source,
+        })?;
+        Ok(hasher.finish())
     }
 
     pub fn profile_install(

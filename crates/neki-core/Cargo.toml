@@ -12,6 +12,7 @@ neki-derivation.workspace = true
 neki-eval.workspace = true
 neki-fetch.workspace = true
 neki-hash.workspace = true
+neki-nar.workspace = true
 neki-platform.workspace = true
 neki-profile.workspace = true
 neki-project.workspace = true
