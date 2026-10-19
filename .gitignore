@@ -1,3 +1,5 @@
 /target
 /result
 /result-*
+/dist
+.DS_Store
