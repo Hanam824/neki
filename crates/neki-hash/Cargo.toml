@@ -1,0 +1,12 @@
+[package]
+name = "neki-hash"
+description = "Hashing, Nix base32, SRI and store path computation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

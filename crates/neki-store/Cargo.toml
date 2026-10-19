@@ -1,0 +1,12 @@
+[package]
+name = "neki-store"
+description = "Local content-addressed store, metadata DB and garbage collection"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

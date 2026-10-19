@@ -1,0 +1,12 @@
+[package]
+name = "neki-project"
+description = "Per-project declarations and lock files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

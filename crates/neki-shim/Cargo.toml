@@ -1,0 +1,12 @@
+[package]
+name = "neki-shim"
+description = "Launcher stub that sets up PATH/DLL directories and runs a store executable"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

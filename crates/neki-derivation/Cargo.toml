@@ -1,0 +1,12 @@
+[package]
+name = "neki-derivation"
+description = "Derivation model, ATerm format and derivation hashing"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true
