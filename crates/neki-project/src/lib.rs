@@ -59,6 +59,18 @@ impl Project {
     }
 }
 
+/// Text of a new project's `neki.toml`.
+pub fn starter_manifest(name: &str) -> String {
+    let name = toml::Value::String(name.to_string());
+    format!(
+        "[project]\nname = {name}\n\n\
+         # Sources pinned by neki.lock, e.g. pkgs = {{ url = \"github:owner/repo\" }}\n\
+         [inputs]\n\n\
+         [dev-shell]\npackages = []\n\n\
+         [packages.default]\nsrc = \".\"\nbuild = []\n"
+    )
+}
+
 fn read(path: &Path) -> Result<String> {
     std::fs::read_to_string(path).map_err(|source| Error::Io {
         path: path.to_path_buf(),

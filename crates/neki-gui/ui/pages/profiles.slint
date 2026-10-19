@@ -1,0 +1,64 @@
+import { Button, LineEdit } from "std-widgets.slint";
+import { AppState } from "../state.slint";
+import { KeyValueList, SectionTitle } from "../components.slint";
+
+export component ProfilesPage inherits VerticalLayout {
+    spacing: 12px;
+    alignment: start;
+
+    SectionTitle {
+        text: "Profiles";
+        font-size: 20px;
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Text {
+            text: "Profile";
+            vertical-alignment: center;
+        }
+        LineEdit {
+            width: 200px;
+            text <=> AppState.profile-name;
+        }
+        Button {
+            text: "Show generations";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.profile-action("history", AppState.profile-name, "");
+            }
+        }
+        Button {
+            text: "Roll back";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.profile-action("rollback", AppState.profile-name, "");
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Text {
+            text: "Packages";
+            vertical-alignment: center;
+        }
+        LineEdit {
+            width: 320px;
+            placeholder-text: "pkgs.nodejs pkgs.python";
+            text <=> AppState.profile-packages;
+        }
+        Button {
+            text: "Install";
+            enabled: !AppState.busy && AppState.profile-packages != "";
+            clicked => {
+                AppState.profile-action("install", AppState.profile-name, AppState.profile-packages);
+            }
+        }
+    }
+    SectionTitle { text: "Generations"; }
+    KeyValueList {
+        items: AppState.generations;
+        empty-text: "No generations loaded.";
+    }
+}

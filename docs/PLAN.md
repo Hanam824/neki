@@ -131,7 +131,9 @@ Nix-design/
 
 ## Part E: Phase 2, the desktop app (Rust + Slint)
 
-- **Architecture:** `neki-gui` links `neki-core` directly in v1. When the daemon (named pipe) exists, the GUI connects to it so builds keep running after the window closes. Slint UI runs on the main thread, operations run on a tokio runtime, and events come back through `slint::invoke_from_event_loop`.
+**Name: Neki Desktop App** (crate `neki-gui`, binary `neki-desktop`).
+
+- **Architecture:** `neki-gui` links `neki-core` directly. The UI state is the Slint global `AppState` (`crates/neki-gui/ui/state.slint`); `src/app.rs` wires its callbacks to `neki-core`. Backend operations run one at a time on a worker thread (`spawn_task`), and events and results come back through `upgrade_in_event_loop`. The project list is saved in `<user config dir>/neki/desktop.toml`. Later, when the daemon exists (Future), the app connects to it so builds keep running after the window closes.
 - **Screens:**
   1. **Projects:** register or discover project folders, with status for each (lock outdated, build state, last build).
   2. **Project detail:** a declaration editor (syntax-highlighted text plus a structured form for `neki.toml`), inputs with lock revisions, "Update input", "Build", "Open dev shell", and outputs.
@@ -141,6 +143,15 @@ Nix-design/
   6. **Garbage collection:** a preview of what would be freed, the roots list, run GC/optimise.
   7. **Caches and settings:** substituters, keys, store root, parallelism.
 - **Extras:** tray icon with build notifications; a file watcher on project declarations that marks them as "needs rebuild".
+
+| D | Deliverable | Status |
+|---|---|---|
+| **D1** | Skeleton app: sidebar (Projects, Store, Profiles, Settings), activity log, project registry (add existing / create new / remove), detail view (lock status, inputs, packages, dev shell), `neki.toml` editor that validates before saving, Build / Update lock / store / profile actions wired to `neki-core` | ✅ (actions show "planned for M<n>" until the backend milestones land) |
+| **D2** | Native folder picker (e.g. `rfd`), unsaved-changes prompt when switching projects | |
+| **D3** | Builds page: live queue, per-derivation logs, cancel (needs M3) | |
+| **D4** | Store browser: path search, closure size, references graph, `why-depends` (needs M2) | |
+| **D5** | Generations list and diff, GC preview (needs M6) | |
+| **D6** | "Open dev shell" in a terminal window (needs M5; launching a terminal is OS-specific, so it goes through `neki-platform`) | |
 
 ---
 
@@ -171,3 +182,4 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 - **CI matrix:** windows-latest, macos-latest, ubuntu-latest. Windows jobs run the junction and Job Object paths in `neki-platform`.
 - **End-to-end:** the example projects in `examples/` (rust-hello, node-app, python-tool) must `neki build` with identical output hashes on two clean machines.
 - **Phase 2:** Slint UI smoke tests (`slint::testing`), plus a manual run of `cargo run -p neki-gui` against the example projects.
+

@@ -1,0 +1,111 @@
+import { Button, ListView, Palette } from "std-widgets.slint";
+import { AppState, KeyValue } from "state.slint";
+
+export global Colors {
+    out property <color> error: #d9534f;
+    out property <color> ok: #3c9d5d;
+}
+
+export component SectionTitle inherits Text {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+export component NavItem inherits Rectangle {
+    in property <string> label;
+    in property <bool> active;
+    callback clicked;
+
+    height: 34px;
+    border-radius: 6px;
+    background: root.active ? Palette.accent-background : touch.has-hover ? Palette.control-background : transparent;
+
+    touch := TouchArea {
+        clicked => {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 12px;
+        Text {
+            text: root.label;
+            vertical-alignment: center;
+            color: root.active ? Palette.accent-foreground : Palette.foreground;
+        }
+    }
+}
+
+export component KeyValueList inherits VerticalLayout {
+    in property <[KeyValue]> items;
+    in property <string> empty-text: "(none)";
+
+    spacing: 6px;
+
+    if root.items.length == 0: Text {
+        text: root.empty-text;
+        opacity: 0.6;
+    }
+    for item in root.items: HorizontalLayout {
+        spacing: 12px;
+        Text {
+            text: item.key;
+            font-weight: 600;
+            width: 140px;
+            overflow: elide;
+        }
+        Text {
+            text: item.value;
+            wrap: word-wrap;
+            horizontal-stretch: 1;
+        }
+    }
+}
+
+export component LogPanel inherits Rectangle {
+    background: Palette.alternate-background;
+
+    VerticalLayout {
+        padding: 8px;
+        spacing: 4px;
+
+        HorizontalLayout {
+            spacing: 8px;
+            Text {
+                text: "Activity";
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+            Text {
+                text: AppState.busy ? "Working: " + AppState.busy-label : "";
+                vertical-alignment: center;
+                opacity: 0.7;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            Button {
+                text: "Clear";
+                clicked => {
+                    AppState.clear-log();
+                }
+            }
+        }
+
+        ListView {
+            for entry in AppState.log: HorizontalLayout {
+                spacing: 8px;
+                padding: 2px;
+                Text {
+                    width: 14px;
+                    text: entry.level == "error" ? "✗" : entry.level == "ok" ? "✓" : "•";
+                    color: entry.level == "error" ? Colors.error : entry.level == "ok" ? Colors.ok : Palette.foreground;
+                }
+                Text {
+                    text: entry.text;
+                    wrap: word-wrap;
+                    color: entry.level == "error" ? Colors.error : Palette.foreground;
+                }
+            }
+        }
+    }
+}

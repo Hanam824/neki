@@ -1,0 +1,222 @@
+import { Button, ComboBox, LineEdit, ListView, Palette, ScrollView, TabWidget, TextEdit } from "std-widgets.slint";
+import { AppState } from "../state.slint";
+import { Colors, KeyValueList, SectionTitle } from "../components.slint";
+
+component ProjectDetailView inherits VerticalLayout {
+    spacing: 10px;
+
+    HorizontalLayout {
+        spacing: 8px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            SectionTitle {
+                text: AppState.detail.name;
+                font-size: 20px;
+            }
+            Text {
+                text: AppState.detail.root;
+                font-size: 11px;
+                opacity: 0.7;
+                overflow: elide;
+            }
+        }
+        package := ComboBox {
+            width: 160px;
+            model: AppState.detail.package-names;
+            enabled: AppState.detail.package-names.length > 0;
+        }
+        Button {
+            text: "Build";
+            primary: true;
+            enabled: !AppState.busy && AppState.detail.package-names.length > 0;
+            clicked => {
+                AppState.build-project(package.current-value);
+            }
+        }
+        Button {
+            text: "Update lock";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.lock-project();
+            }
+        }
+        Button {
+            text: "Remove";
+            clicked => {
+                AppState.remove-project(AppState.selected-project);
+            }
+        }
+    }
+
+    if AppState.detail.description != "": Text {
+        text: AppState.detail.description;
+        wrap: word-wrap;
+    }
+
+    TabWidget {
+        vertical-stretch: 1;
+
+        Tab {
+            title: "Overview";
+            ScrollView {
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+                    alignment: start;
+                    SectionTitle { text: "Lock"; }
+                    Text {
+                        text: AppState.detail.lock-status;
+                        wrap: word-wrap;
+                    }
+                    SectionTitle { text: "Inputs"; }
+                    KeyValueList { items: AppState.detail.inputs; }
+                    SectionTitle { text: "Packages"; }
+                    KeyValueList { items: AppState.detail.packages; }
+                    SectionTitle { text: "Dev shell"; }
+                    KeyValueList { items: AppState.detail.dev-shell; }
+                }
+            }
+        }
+
+        Tab {
+            title: "neki.toml";
+            VerticalLayout {
+                padding: 8px;
+                spacing: 8px;
+                TextEdit {
+                    vertical-stretch: 1;
+                    font-size: 13px;
+                    text <=> AppState.manifest-text;
+                    edited(text) => {
+                        AppState.manifest-dirty = true;
+                    }
+                }
+                if AppState.manifest-error != "": Text {
+                    text: AppState.manifest-error;
+                    color: Colors.error;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text {
+                        text: AppState.manifest-dirty ? "Unsaved changes" : "";
+                        vertical-alignment: center;
+                        opacity: 0.7;
+                        horizontal-stretch: 1;
+                    }
+                    Button {
+                        text: "Revert";
+                        enabled: AppState.manifest-dirty;
+                        clicked => {
+                            AppState.reload-manifest();
+                        }
+                    }
+                    Button {
+                        text: "Save";
+                        primary: true;
+                        enabled: AppState.manifest-dirty;
+                        clicked => {
+                            AppState.save-manifest(AppState.manifest-text);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component ProjectsPage inherits HorizontalLayout {
+    spacing: 16px;
+
+    VerticalLayout {
+        width: 280px;
+        spacing: 8px;
+
+        HorizontalLayout {
+            SectionTitle {
+                text: "Projects";
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            Button {
+                text: "Refresh";
+                clicked => {
+                    AppState.refresh-projects();
+                }
+            }
+        }
+
+        ListView {
+            vertical-stretch: 1;
+            for item[i] in AppState.projects: Rectangle {
+                height: 52px;
+                border-radius: 6px;
+                background: i == AppState.selected-project ? Palette.selection-background : area.has-hover ? Palette.alternate-background : transparent;
+                area := TouchArea {
+                    clicked => {
+                        AppState.select-project(i);
+                    }
+                }
+                VerticalLayout {
+                    padding: 8px;
+                    spacing: 2px;
+                    Text {
+                        text: item.name;
+                        font-weight: 600;
+                        overflow: elide;
+                        color: i == AppState.selected-project ? Palette.selection-foreground : Palette.foreground;
+                    }
+                    Text {
+                        text: item.status;
+                        font-size: 11px;
+                        overflow: elide;
+                        color: item.ok ? (i == AppState.selected-project ? Palette.selection-foreground : Palette.foreground) : Colors.error;
+                        opacity: 0.8;
+                    }
+                }
+            }
+        }
+
+        Text {
+            text: "Project folder";
+            font-size: 11px;
+        }
+        LineEdit {
+            placeholder-text: "/path/to/project";
+            text <=> AppState.new-project-path;
+            accepted(text) => {
+                AppState.add-project(text);
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px;
+            Button {
+                text: "Add existing";
+                horizontal-stretch: 1;
+                enabled: AppState.new-project-path != "";
+                clicked => {
+                    AppState.add-project(AppState.new-project-path);
+                }
+            }
+            Button {
+                text: "Create new";
+                horizontal-stretch: 1;
+                enabled: AppState.new-project-path != "";
+                clicked => {
+                    AppState.create-project(AppState.new-project-path);
+                }
+            }
+        }
+    }
+
+    if AppState.selected-project < 0: Rectangle {
+        horizontal-stretch: 1;
+        Text {
+            text: "Select a project, or add one by its folder path.";
+            opacity: 0.7;
+        }
+    }
+    if AppState.selected-project >= 0: ProjectDetailView {
+        horizontal-stretch: 1;
+    }
+}

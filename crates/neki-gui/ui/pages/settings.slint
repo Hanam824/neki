@@ -1,0 +1,18 @@
+import { AppState } from "../state.slint";
+import { KeyValueList, SectionTitle } from "../components.slint";
+
+export component SettingsPage inherits VerticalLayout {
+    spacing: 12px;
+    alignment: start;
+
+    SectionTitle {
+        text: "Settings";
+        font-size: 20px;
+    }
+    KeyValueList { items: AppState.settings; }
+    Text {
+        text: "To use another store, set NEKI_STORE_DIR / NEKI_STATE_DIR before starting the app.";
+        wrap: word-wrap;
+        opacity: 0.7;
+    }
+}

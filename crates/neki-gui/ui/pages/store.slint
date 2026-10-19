@@ -1,0 +1,49 @@
+import { Button } from "std-widgets.slint";
+import { AppState } from "../state.slint";
+import { SectionTitle } from "../components.slint";
+
+export component StorePage inherits VerticalLayout {
+    spacing: 12px;
+    alignment: start;
+
+    SectionTitle {
+        text: "Store";
+        font-size: 20px;
+    }
+    Text {
+        text: "Check and clean up the store at " + AppState.store-dir + ". Results appear in Activity.";
+        wrap: word-wrap;
+    }
+    HorizontalLayout {
+        spacing: 8px;
+        alignment: start;
+        Button {
+            text: "Verify";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.store-action("verify");
+            }
+        }
+        Button {
+            text: "Garbage collect (dry run)";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.store-action("gc-dry-run");
+            }
+        }
+        Button {
+            text: "Garbage collect";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.store-action("gc");
+            }
+        }
+        Button {
+            text: "Optimise";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.store-action("optimise");
+            }
+        }
+    }
+}

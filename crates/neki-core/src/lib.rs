@@ -9,18 +9,21 @@ mod events;
 pub use config::Config;
 pub use events::{Event, EventSink, NullSink};
 pub use neki_hash::{Hash, StorePath};
+pub use neki_platform::paths::user_config_dir;
 pub use neki_platform::shell::Shell;
 pub use neki_profile::{Generation, ShellEnv};
-pub use neki_project::{LockFile, Manifest, Project};
+pub use neki_project::{LOCK_FILE, LockFile, MANIFEST_FILE, Manifest, Project};
 pub use neki_store::{GcOptions, GcResult, PathInfo};
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("not implemented yet (planned for {0})")]
     NotImplemented(&'static str),
+    #[error("{} already exists", .0.display())]
+    AlreadyExists(PathBuf),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
@@ -68,6 +71,22 @@ impl Neki {
             Err(neki_project::Error::NotFound(_)) => Ok(None),
             Err(err) => Err(err.into()),
         }
+    }
+
+    /// Create a project in `dir` (created if missing) with a starter `neki.toml`
+    /// named after the directory.
+    pub fn init_project(&self, dir: &Path) -> Result<Project> {
+        let manifest_path = dir.join(MANIFEST_FILE);
+        if manifest_path.exists() {
+            return Err(Error::AlreadyExists(manifest_path));
+        }
+        std::fs::create_dir_all(dir)?;
+        let name = dir
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("project");
+        std::fs::write(&manifest_path, neki_project::starter_manifest(name))?;
+        Ok(Project::load(dir)?)
     }
 
     /// Build a package of `project` (`default` if `package` is `None`) and

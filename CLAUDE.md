@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Neki** (CLI binary `neki`, crates `neki-*`) is a reimplementation of Nix's architecture in Rust that runs natively on **Windows** as well as macOS/Linux. It is a new tool, not a Nix port: avoid "Nix" in user-facing names (NixOS Foundation trademark). Phase 1 is the backend + CLI; Phase 2 is a Rust + Slint desktop app (`crates/neki-gui`, not created yet) that drives the backend.
+**Neki** (CLI binary `neki`, crates `neki-*`) is a reimplementation of Nix's architecture in Rust that runs natively on **Windows** as well as macOS/Linux. It is a new tool, not a Nix port: avoid "Nix" in user-facing names (NixOS Foundation trademark). Phase 1 is the backend + CLI; Phase 2 is **Neki Desktop App**, a Rust + Slint app (`crates/neki-gui`, binary `neki-desktop`) that drives the backend.
 
 The full design, the list of Windows problems with chosen workarounds (P1–P16), and the milestone roadmap (M0–M9) are in `docs/PLAN.md` — read it before changing core formats or starting a milestone.
 
@@ -18,7 +18,10 @@ cargo test -p neki-nar some_test_name  # one test
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --all
 cargo run -p neki-cli -- <args>        # the `neki` binary
+cargo run -p neki-gui                  # Neki Desktop App
 ```
+
+The first build of `neki-gui` compiles Slint and takes a few minutes. On Linux it needs `libfontconfig1-dev` and `libxkbcommon-dev`.
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy `-D warnings` and tests on windows, macos and ubuntu — code must compile on all three.
 
@@ -31,8 +34,10 @@ Dependency direction (lower layers never depend on higher ones):
 ```
 neki-platform, neki-hash → neki-nar → neki-derivation → neki-store → neki-fetch / neki-build / neki-substitute / neki-profile
 neki-eval, neki-project (standalone)
-all of the above → neki-core → neki-cli (and later neki-gui)
+all of the above → neki-core → neki-cli, neki-gui
 ```
+
+- `neki-gui`: the `.slint` files in `ui/` are compiled by `build.rs`. All UI state and callbacks are on the global `AppState` (`ui/state.slint`); `src/app.rs` connects them to `neki-core`. Backend calls must run through `spawn_task` (worker thread, one at a time, results back via `upgrade_in_event_loop`), never on the UI thread. `src/registry.rs` persists the project list in `<user config dir>/neki/desktop.toml`.
 
 - `neki-core` (`Neki` struct) is the only API the CLI and GUI call. It re-exports the types front-ends need, and long operations report through the `EventSink` trait so both front-ends share behaviour. `neki-cli` does only argument parsing (clap) and output.
 - `neki-project` parses the per-project declaration `neki.toml` (`[project]`, `[inputs]`, `[dev-shell]`, `[packages.<name>]`, with `deny_unknown_fields`) and `neki.lock` (JSON); `examples/hello/neki.toml` is the reference example and is parsed by a unit test.

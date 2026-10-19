@@ -1,0 +1,84 @@
+import { Palette } from "std-widgets.slint";
+import { AppState } from "state.slint";
+import { LogPanel, NavItem } from "components.slint";
+import { ProjectsPage } from "pages/projects.slint";
+import { StorePage } from "pages/store.slint";
+import { ProfilesPage } from "pages/profiles.slint";
+import { SettingsPage } from "pages/settings.slint";
+
+export { AppState, KeyValue, LogEntry, ProjectDetail, ProjectItem } from "state.slint";
+
+export component AppWindow inherits Window {
+    title: "Neki Desktop App";
+    preferred-width: 1100px;
+    preferred-height: 720px;
+    min-width: 820px;
+    min-height: 540px;
+    background: Palette.background;
+
+    HorizontalLayout {
+        Rectangle {
+            width: 190px;
+            background: Palette.alternate-background;
+            VerticalLayout {
+                padding: 12px;
+                spacing: 4px;
+                alignment: start;
+                Text {
+                    text: "Neki";
+                    font-size: 22px;
+                    font-weight: 800;
+                }
+                Text {
+                    text: "Desktop App";
+                    font-size: 12px;
+                    opacity: 0.7;
+                }
+                Rectangle { height: 16px; }
+                NavItem {
+                    label: "Projects";
+                    active: AppState.page == 0;
+                    clicked => {
+                        AppState.page = 0;
+                    }
+                }
+                NavItem {
+                    label: "Store";
+                    active: AppState.page == 1;
+                    clicked => {
+                        AppState.page = 1;
+                    }
+                }
+                NavItem {
+                    label: "Profiles";
+                    active: AppState.page == 2;
+                    clicked => {
+                        AppState.page = 2;
+                    }
+                }
+                NavItem {
+                    label: "Settings";
+                    active: AppState.page == 3;
+                    clicked => {
+                        AppState.page = 3;
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            VerticalLayout {
+                vertical-stretch: 1;
+                padding: 16px;
+                if AppState.page == 0: ProjectsPage { }
+                if AppState.page == 1: StorePage { }
+                if AppState.page == 2: ProfilesPage { }
+                if AppState.page == 3: SettingsPage { }
+            }
+            LogPanel {
+                height: 170px;
+            }
+        }
+    }
+}

@@ -97,6 +97,13 @@ mod tests {
     }
 
     #[test]
+    fn starter_manifest_parses() {
+        let manifest = Manifest::parse(&crate::starter_manifest("my \"app\"")).unwrap();
+        assert_eq!(manifest.project.name, "my \"app\"");
+        assert!(manifest.packages.contains_key("default"));
+    }
+
+    #[test]
     fn rejects_unknown_fields() {
         assert!(Manifest::parse("[project]\nname = \"x\"\nbogus = 1\n").is_err());
     }

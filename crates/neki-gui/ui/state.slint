@@ -1,0 +1,68 @@
+// State shared between the UI and Rust (`AppState` global).
+
+export struct ProjectItem {
+    name: string,
+    // Project root for loaded projects, the error message otherwise.
+    status: string,
+    ok: bool,
+}
+
+export struct KeyValue {
+    key: string,
+    value: string,
+}
+
+export struct LogEntry {
+    // "info", "ok" or "error".
+    level: string,
+    text: string,
+}
+
+export struct ProjectDetail {
+    name: string,
+    description: string,
+    root: string,
+    lock-status: string,
+    package-names: [string],
+    inputs: [KeyValue],
+    packages: [KeyValue],
+    dev-shell: [KeyValue],
+}
+
+export global AppState {
+    // 0 = projects, 1 = store, 2 = profiles, 3 = settings.
+    in-out property <int> page: 0;
+    in-out property <bool> busy: false;
+    in-out property <string> busy-label;
+    // Newest entry first.
+    in-out property <[LogEntry]> log;
+
+    in-out property <[ProjectItem]> projects;
+    in-out property <int> selected-project: -1;
+    in-out property <ProjectDetail> detail;
+    in-out property <string> manifest-text;
+    in-out property <bool> manifest-dirty: false;
+    in-out property <string> manifest-error;
+    in-out property <string> new-project-path;
+
+    in-out property <string> store-dir;
+    in-out property <[KeyValue]> settings;
+    in-out property <string> profile-name: "default";
+    in-out property <string> profile-packages;
+    in-out property <[KeyValue]> generations;
+
+    callback add-project(string);
+    callback create-project(string);
+    callback remove-project(int);
+    callback select-project(int);
+    callback refresh-projects();
+    callback save-manifest(string);
+    callback reload-manifest();
+    callback build-project(string);
+    callback lock-project();
+    // "verify", "gc-dry-run", "gc" or "optimise".
+    callback store-action(string);
+    // action ("history", "rollback" or "install"), profile, packages.
+    callback profile-action(string, string, string);
+    callback clear-log();
+}

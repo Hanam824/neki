@@ -24,6 +24,8 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Create a new project (neki.toml) in the current or `-C` directory.
+    Init,
     /// Show the configuration and the current project.
     Info {
         /// Print JSON instead of text.
@@ -159,6 +161,13 @@ fn run(cli: Cli) -> Result<ExitCode> {
     };
     let events = StderrSink;
     match cli.command {
+        Command::Init => {
+            let project = neki.init_project(&dir)?;
+            println!(
+                "created {}",
+                project.root.join(neki_core::MANIFEST_FILE).display()
+            );
+        }
         Command::Info { json } => info(&neki, &dir, json)?,
         Command::Build { package } => {
             let project = Project::discover(&dir)?;
