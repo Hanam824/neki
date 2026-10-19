@@ -147,7 +147,9 @@ fn main() -> ExitCode {
     match run(Cli::parse()) {
         Ok(code) => code,
         Err(err) => {
-            eprintln!("error: {err:#}");
+            // Plain `{err}`: Neki's error messages already include their cause, so printing the
+            // source chain (`{err:#}`) would repeat it.
+            eprintln!("error: {err}");
             ExitCode::FAILURE
         }
     }

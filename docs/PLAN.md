@@ -119,7 +119,7 @@ Nix-design/
 |---|---|---|
 | **M0** | Workspace scaffold, CI (GitHub Actions: windows/macos/ubuntu), `CLAUDE.md`, lint (`clippy -D warnings`, `fmt`) | `cargo test --workspace` green on all 3 OSes |
 | **M0.5** | Cross-platform skeleton: all crate APIs, `neki-platform`, the full CLI, `neki.toml`/`neki.lock` parsing, `neki info` | Builds clippy-clean; `neki info` shows config + project; other commands fail with "planned for M<n>" ✅ |
-| **M1** | `neki-hash` + `neki-nar` | NAR + base32 + store path match committed golden vectors; `neki hash path/file` |
+| **M1** | `neki-hash` + `neki-nar` | NAR + base32 + store path match committed golden vectors; `neki hash path/file` ✅ (base32 matches Nix's own vectors; hashes, NAR bytes and store paths cross-checked against openssl and an independent Python implementation) |
 | **M2** | `neki-store` (local store, DB, `add-to-store`, refs, read-only, locks) | `neki store add <dir>` → `C:\neki\store\<hash>-name`, re-adding is idempotent, `path-info`/`verify` work |
 | **M3** | `neki-derivation` + `neki-build` (executor, process-tree kill, scheduler, logs) + `neki-fetch` (fetchurl/zip) | Hand-written `.drv` builds; a fixed-output fetch verifies the hash; deps build in DAG order, in parallel |
 | **M4** | `neki-eval` v1 (core language + `derivation` + fetch builtins) and `neki.toml` front end | `neki build` from a `.neki` expression produces a deterministic `.drv` path (golden-tested) |
@@ -162,7 +162,8 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 - Real build sandboxes (namespaces / sandbox-exec / AppContainer) and network blocking for builds (P1)
 - Scoop / winget / Homebrew manifest importers (P2)
 - DLL hardlinking (Windows), RPATH patching (Unix) (P4)
-- Windows symlinks via Developer Mode (P5)
+- Windows symlinks via Developer Mode (P5). Until then, unpacking a NAR that contains a symlink fails on Windows with a clear error
+- Executable bit on Windows (P10): Windows has no such bit, so NARs made there mark nothing executable, and a tree with executables hashes differently than on Unix. Fix: carry the bit from archive metadata (tar/zip) straight into the NAR in M3's unpacker
 - MSI/EXE installers, registry, services, drivers (P6)
 - LLVM-mingw stdenv, MSVC as an impure input (P7)
 - ACL / `chattr` hard immutability (P8)
