@@ -1,13 +1,11 @@
 //! Hashing, Nix base32, SRI and store path computation.
 
-#![allow(unused_variables)] // skeleton: stub bodies
-
 pub mod base32;
 mod hash;
 mod store_path;
 
-pub use hash::{Hash, HashAlgo};
-pub use store_path::{HASH_LEN, StoreDir, StorePath};
+pub use hash::{Hash, HashAlgo, Hasher};
+pub use store_path::{HASH_LEN, MAX_NAME_LEN, StoreDir, StorePath};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
