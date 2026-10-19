@@ -1,0 +1,16 @@
+[project]
+name = "hello"
+description = "Example Neki project"
+
+[inputs]
+# Placeholder: no Neki package set exists yet.
+pkgs = { url = "github:neki-pkgs/pkgs" }
+
+[dev-shell]
+packages = ["pkgs.rustc", "pkgs.cargo"]
+env = { RUST_LOG = "info" }
+
+[packages.default]
+src = "."
+build-inputs = ["pkgs.rustc", "pkgs.cargo"]
+build = [["cargo", "install", "--path", ".", "--root", "${out}"]]

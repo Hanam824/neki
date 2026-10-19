@@ -7,6 +7,11 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+neki-derivation.workspace = true
+neki-hash.workspace = true
+neki-platform.workspace = true
+neki-store.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

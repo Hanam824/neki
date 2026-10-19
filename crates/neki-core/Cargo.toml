@@ -7,6 +7,18 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+neki-build.workspace = true
+neki-derivation.workspace = true
+neki-eval.workspace = true
+neki-fetch.workspace = true
+neki-hash.workspace = true
+neki-platform.workspace = true
+neki-profile.workspace = true
+neki-project.workspace = true
+neki-store.workspace = true
+neki-substitute.workspace = true
+serde.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

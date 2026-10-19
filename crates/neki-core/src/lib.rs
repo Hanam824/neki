@@ -1,1 +1,186 @@
-//! High-level API shared by the CLI and the desktop app.
+//! High-level operations shared by the CLI and the desktop app. Front-ends
+//! depend only on this crate; long operations report through [`EventSink`].
+
+#![allow(unused_variables)] // skeleton: stub bodies
+
+mod config;
+mod events;
+
+pub use config::Config;
+pub use events::{Event, EventSink, NullSink};
+pub use neki_hash::{Hash, StorePath};
+pub use neki_platform::shell::Shell;
+pub use neki_profile::{Generation, ShellEnv};
+pub use neki_project::{LockFile, Manifest, Project};
+pub use neki_store::{GcOptions, GcResult, PathInfo};
+
+use std::path::Path;
+use std::process::{Command, ExitStatus};
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("not implemented yet (planned for {0})")]
+    NotImplemented(&'static str),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Project(#[from] neki_project::Error),
+    #[error(transparent)]
+    Hash(#[from] neki_hash::Error),
+    #[error(transparent)]
+    Store(#[from] neki_store::Error),
+    #[error(transparent)]
+    Fetch(#[from] neki_fetch::Error),
+    #[error(transparent)]
+    Build(#[from] neki_build::Error),
+    #[error(transparent)]
+    Substitute(#[from] neki_substitute::Error),
+    #[error(transparent)]
+    Eval(#[from] neki_eval::Error),
+    #[error(transparent)]
+    Profile(#[from] neki_profile::Error),
+}
+
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+/// Error for operations whose implementation is scheduled for `milestone`.
+fn planned<T>(milestone: &'static str) -> Result<T> {
+    Err(Error::NotImplemented(milestone))
+}
+
+pub struct Neki {
+    config: Config,
+}
+
+impl Neki {
+    pub fn new(config: Config) -> Self {
+        Self { config }
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    /// The project at or above `dir`, or `None` if there is none.
+    pub fn find_project(&self, dir: &Path) -> Result<Option<Project>> {
+        match Project::discover(dir) {
+            Ok(project) => Ok(Some(project)),
+            Err(neki_project::Error::NotFound(_)) => Ok(None),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    /// Build a package of `project` (`default` if `package` is `None`) and
+    /// return its output paths.
+    pub fn build(
+        &self,
+        project: &Project,
+        package: Option<&str>,
+        events: &dyn EventSink,
+    ) -> Result<Vec<StorePath>> {
+        planned("M3")
+    }
+
+    /// Build a package and run its main program with `args`.
+    pub fn run(
+        &self,
+        project: &Project,
+        package: Option<&str>,
+        args: &[String],
+        events: &dyn EventSink,
+    ) -> Result<ExitStatus> {
+        planned("M5")
+    }
+
+    /// Environment of the project's dev shell, with all its packages built.
+    pub fn develop(&self, project: &Project, events: &dyn EventSink) -> Result<ShellEnv> {
+        planned("M5")
+    }
+
+    /// Environment with `packages` (`<input>.<attr>`) available.
+    pub fn shell(&self, packages: &[String], events: &dyn EventSink) -> Result<ShellEnv> {
+        planned("M5")
+    }
+
+    /// Lock missing inputs, re-resolve the inputs named in `update`, and
+    /// write `neki.lock`.
+    pub fn lock(
+        &self,
+        project: &Project,
+        update: &[String],
+        events: &dyn EventSink,
+    ) -> Result<LockFile> {
+        planned("M5")
+    }
+
+    /// Run the user's interactive shell with `env` applied and wait for it.
+    pub fn spawn_shell(&self, env: &ShellEnv) -> Result<ExitStatus> {
+        let (_, program) = Shell::detect();
+        let mut cmd = Command::new(program);
+        env.apply_to(&mut cmd);
+        Ok(cmd.status()?)
+    }
+
+    pub fn store_add(&self, path: &Path) -> Result<StorePath> {
+        planned("M2")
+    }
+
+    pub fn path_info(&self, path: &str) -> Result<PathInfo> {
+        planned("M2")
+    }
+
+    /// Paths whose contents no longer match their recorded hash.
+    pub fn verify(&self) -> Result<Vec<StorePath>> {
+        planned("M2")
+    }
+
+    pub fn gc(&self, opts: &GcOptions) -> Result<GcResult> {
+        planned("M6")
+    }
+
+    /// Deduplicate store files; returns bytes saved.
+    pub fn optimise(&self) -> Result<u64> {
+        planned("M6")
+    }
+
+    /// Hash of the NAR serialization of `path`.
+    pub fn hash_path(&self, path: &Path) -> Result<Hash> {
+        planned("M1")
+    }
+
+    /// Hash of the flat contents of the file at `path`.
+    pub fn hash_file(&self, path: &Path) -> Result<Hash> {
+        planned("M1")
+    }
+
+    pub fn profile_install(
+        &self,
+        profile: &str,
+        packages: &[String],
+        events: &dyn EventSink,
+    ) -> Result<Generation> {
+        planned("M6")
+    }
+
+    pub fn profile_remove(
+        &self,
+        profile: &str,
+        packages: &[String],
+        events: &dyn EventSink,
+    ) -> Result<Generation> {
+        planned("M6")
+    }
+
+    pub fn profile_rollback(&self, profile: &str) -> Result<Generation> {
+        planned("M6")
+    }
+
+    pub fn profile_generations(&self, profile: &str) -> Result<Vec<Generation>> {
+        planned("M6")
+    }
+
+    /// Upload the closures of `paths` to the cache at `url`.
+    pub fn cache_push(&self, url: &str, paths: &[String], events: &dyn EventSink) -> Result<()> {
+        planned("M7")
+    }
+}

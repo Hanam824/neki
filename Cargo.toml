@@ -8,6 +8,28 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.85"
 
+[workspace.dependencies]
+neki-build = { path = "crates/neki-build" }
+neki-core = { path = "crates/neki-core" }
+neki-derivation = { path = "crates/neki-derivation" }
+neki-eval = { path = "crates/neki-eval" }
+neki-fetch = { path = "crates/neki-fetch" }
+neki-hash = { path = "crates/neki-hash" }
+neki-nar = { path = "crates/neki-nar" }
+neki-platform = { path = "crates/neki-platform" }
+neki-profile = { path = "crates/neki-profile" }
+neki-project = { path = "crates/neki-project" }
+neki-store = { path = "crates/neki-store" }
+neki-substitute = { path = "crates/neki-substitute" }
+
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+dirs = "6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+toml = "0.9"
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 

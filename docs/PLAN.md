@@ -1,6 +1,6 @@
 # Plan: a cross-platform, Nix-style package manager written in Rust (Windows-first)
 
-**Name: Neki** (binary `neki`, crates `neki-*`; decided 2026-10-19). **Nix compatibility:** Nix is the design spec only; byte-compatibility with real Nix is *not* a goal and Nix is not needed for development (decided 2026-10-19). Store root is `C:\neki\store` / `/neki/store`.
+**Name: Neki** (binary `neki`, crates `neki-*`; decided 2026-10-19). **Nix compatibility:** Nix is the design spec only; byte-compatibility with real Nix is *not* a goal and Nix is not needed for development (decided 2026-10-19). Store root is `C:\neki\store` (Windows) / `/opt/neki/store` (macOS, Linux). **Cross-platform rule** (decided 2026-10-19): every feature behaves the same on Windows, macOS and Linux; anything that can't is moved to [Future](#future-not-cross-platform-yet).
 
 ## Context
 
@@ -13,34 +13,34 @@ The repo started empty, so this is a greenfield project. The first implementatio
 
 ---
 
-## Part A: Problems that can't be implemented as Nix does them (you decide: ignore, or accept the proposed alternative)
+## Part A: Cross-platform policy
 
-| # | Problem | Why it's hard on Windows | Proposed alternative |
+Rule: one behaviour on every OS. Where the OS mechanism differs but the behaviour can be identical, it lives behind one function in **`neki-platform`** (the only crate with `cfg(windows)`/`cfg(unix)` code). Everything else goes to [Future](#future-not-cross-platform-yet).
+
+| # | Topic | Now (same on all OSes) | Future |
 |---|---|---|---|
-| P1 | **Pure build sandbox** (Linux namespaces, chroot, no network) | Windows has no user namespaces, chroot or bind mounts. AppContainer and Job Objects are partial. Windows Sandbox and Hyper-V are too heavy. | **Best-effort purity**: a scrubbed environment, a private temp dir, a Job Object (kills the process tree, sets limits), a cwd inside the build dir, and a `PATH` that contains only declared inputs. Network is blocked only for non-fixed-output builds, through an opt-in AppContainer later. Mark builds as "impure-capable". |
-| P2 | **Reusing nixpkgs and cache.nixos.org** | nixpkgs packages are Linux/macOS ELF/Mach-O binaries and the Windows support in nixpkgs is minimal (mostly mingw cross builds). None of the 100k packages can be reused. | Build **our own package set**. Bootstrap it by importing **Scoop / winget manifests** (they already contain url + sha256 + bin), wrapped as fixed-output derivations. Build from source only for a small core. |
-| P3 | **Nix language plus nixpkgs compatibility** | A full lazy Nix evaluator is large, and nixpkgs depends on hundreds of builtins and stdenv/bash. | Write our own evaluator on top of **`rnix-parser` (MIT)**, covering the core language and the important builtins, with **no** nixpkgs compatibility. Alternatively embed `snix-eval`, but it is **GPL-3**, which affects the project's license. Also offer a simple `neki.toml` front end for easy projects. |
-| P4 | **No RPATH / hardcoded library paths** | Windows looks up DLLs in the exe dir, then the system dirs, then `PATH`. A binary can't point at `C:\neki\store\...\lib`. | Use **launcher shims** (small Rust exe stubs) that set `PATH`/`SetDllDirectory` and then run the real exe. When building a profile, **hardlink the dependency DLLs next to the exe**. |
-| P5 | **Symlinks** (profiles, GC roots, `result` links) | Creating a symlink needs Developer Mode or admin. | **Directory junctions** for dirs, **hardlinks** for files, and shims for exes. Use real symlinks only when the privilege is detected. GC roots go in the DB, not in symlinks. |
-| P6 | **MSI/EXE installers, registry, COM, services, drivers** | They write global machine state. That isn't reproducible and doesn't fit in a store path. | **Ignore** registry/services/drivers. Extract MSI with an administrative install (`msiexec /a`) or the `msi` crate, and extract self-extractors with 7z. Packages that need global installation are unsupported, or flagged "impure: system". |
-| P7 | **MSVC toolchain in the store** | The Visual Studio Build Tools license forbids redistributing them, so they can't go into a binary cache. | Use **LLVM-mingw / Zig / Rust GNU** as the redistributable toolchains in the store. Treat MSVC as an **impure system input** that's detected and hashed by version. |
-| P8 | **Store immutability** (`chattr`, read-only bind mount) | No equivalent. | Set the read-only attribute plus a **deny-write ACL** for the user, and verify by hash on demand (`neki store verify`). |
-| P9 | **Path rewriting when the store root moves** (`C:\neki` vs `D:\neki`) | Hashes embed the store path, so a different root means different hashes and no cache sharing. | **Fix the store root** at `C:\neki\store`, so hashes are platform-independent apart from `system`. A custom root is allowed but loses the substituter. |
-| P10 | **Windows filesystem quirks** | Case-insensitive, `MAX_PATH`=260, reserved names (`CON`, `NUL`, `AUX`…), illegal chars (`:`), trailing dots, no exec bit. | Use lowercase Nix-base32 hashes (no case collisions). Enable long paths (manifest + `\\?\` prefix). **Reject** NAR entries with reserved names, or escape them. Keep the exec bit as metadata in the NAR only. |
-| P11 | **Multi-user daemon** (build users `nixbld1..N`, Unix socket) | No build users. The daemon would have to be a Windows service with named pipes. | **Single-user mode first.** Add a daemon (Windows service + named pipe) as a later milestone; the Phase 2 GUI needs it anyway. |
-| P12 | **Shell environments** (`nix-shell`, `nix develop`, direnv) | Depend on bash. Windows `PATH` and the environment block have size limits. | Generate activation scripts for **PowerShell, cmd and Nushell**, plus `neki shell` (spawns a child shell). Keep `PATH` short by using one merged `bin` dir per environment (a profile "buildEnv"). |
-| P13 | **Runtime reference scanning** | Nix scans output bytes for store hashes. PE files often contain **UTF-16LE** strings, so a byte scan misses them. | Scan for **both UTF-8 and UTF-16LE** encodings of each candidate hash. |
-| P14 | **Locked files and antivirus** | GC can't delete files that are in use, and Defender slows extraction a lot. | Retry/defer deletion (the `MoveFileEx` delay-until-reboot fallback). Document a Defender exclusion for `C:\neki`. |
-| P15 | **NixOS / nix-darwin** (OS-level declarative config) | Out of scope on Windows. | **Ignore.** A small "user environment" module (dotfiles, env vars) may come later. |
-| P16 | **CRLF / git autocrlf** changing source hashes | The same repo hashes differently. | `fetchgit` always checks out with `core.autocrlf=false`, and path imports hash raw bytes. |
-
-**Recommended defaults** (assumed unless you change them): P1 best-effort, P2 Scoop-manifest import, P3 own evaluator on rnix-parser plus a TOML front end, P4 shims, P5 junctions/hardlinks, P6 ignore, P7 LLVM-mingw, P9 fixed root, P11 single-user first, P15 ignore.
+| P1 | Build isolation | Scrubbed environment, private temp/build dir, `PATH` = declared inputs only, the whole process tree killed on exit (`platform::process`: process group on Unix, Job Object on Windows) | Real sandboxes (Linux namespaces, macOS sandbox-exec, Windows AppContainer), network blocking |
+| P2 | Package source | Our own package set (nixpkgs can't run on Windows); generic "prebuilt binary archive" recipe (url + hash + bin list) | Scoop/winget manifest importers, Homebrew importer |
+| P3 | Language | `neki.toml` declarative front end; own evaluator for a Nix-language subset (no nixpkgs compatibility; `rnix-parser` is MIT, `snix-eval` is GPL-3 so it's avoided) | — |
+| P4 | Finding libraries at runtime | Launcher **shim** (the same Rust exe on every OS) reads a `.shim` sidecar, sets `PATH`/env and runs the target | Windows DLL hardlinking next to exes, RPATH patching on Unix |
+| P5 | Links (profiles, `result`, roots) | GC roots in the store DB (no links). Profiles = merged dirs of **hardlinks** + shims. `result` = `platform::fs::link_dir` (symlink on Unix, junction on Windows) | Real symlinks on Windows with Developer Mode |
+| P6 | MSI/EXE installers, registry, services | — | MSI extraction, "impure: system" flag |
+| P7 | Toolchains | Compilers are normal inputs; no toolchain bundled yet | LLVM-mingw stdenv, MSVC as an impure system input (it can't be redistributed) |
+| P8 | Store immutability | `std` read-only permission on registered files, plus `neki store verify` | Windows deny-write ACL, `chattr +i` |
+| P9 | Store root | Fixed per OS family: `C:\neki\store` (Windows) or `/opt/neki/store` (macOS + Linux; `/opt` needs no synthetic APFS volume on macOS); state in `C:\neki\var` / `/opt/neki/var`; overridable with `NEKI_STORE_DIR` / `NEKI_STATE_DIR` | Relocatable stores |
+| P10 | File names | The NAR unpacker rejects names invalid on **any** supported OS (Windows reserved names/chars, trailing dot/space) so store contents are portable. The exec bit is stored in the NAR and applied only on Unix | Escaping instead of rejection |
+| P11 | Daemon / multi-user | Single-user, in-process | Daemon (Unix socket / named pipe), multi-user |
+| P12 | Shells | `neki develop`/`neki shell` spawn a child shell with the env applied (`$SHELL` on Unix, PowerShell on Windows). Activation scripts for POSIX sh and PowerShell (pwsh runs on all 3 OSes) | cmd, fish and Nushell scripts, direnv-style auto-activation |
+| P13 | Reference scanning | Scan outputs for hashes in UTF-8 **and** UTF-16LE on every OS | — |
+| P14 | Locked files / GC | Clear read-only flags and retry removal (`platform::fs::remove_tree`) | Windows delete-on-reboot, Defender exclusion helper |
+| P15 | NixOS / nix-darwin | — | User-environment module |
+| P16 | Line endings | Git fetches never convert CRLF; path imports hash raw bytes | — |
 
 ---
 
 ## Part B: Nix features we can support
 
-**Store and formats (identical to Nix):**
+**Store and formats (same design as Nix):**
 - Store paths: `sha256` → truncated to 160 bits → Nix base32, `<hash>-<name>`
 - NAR serialization, `nix-hash`, the SRI hash format (`sha256-…`)
 - `.drv` files in ATerm format, with derivation hashing modulo fixed-output derivations
@@ -55,15 +55,15 @@ The repo started empty, so this is a greenfield project. The first implementatio
 - Overlays/overrides (`override`, `overrideAttrs`) in our own package set library
 
 **Projects (flake-like):**
-- A per-project `flake.neki` (or `neki.toml`) with `inputs` / `outputs` (`packages`, `devShells`, `apps`)
-- A lock file (`neki.lock`, the same JSON shape as `flake.lock`) and `neki lock --update-input`
-- Dev shells: `neki develop`, plus a direnv-like auto-activation hook for PowerShell
-- `neki build` → a `result` junction, `neki run`, `neki shell pkgA pkgB` (ad hoc)
+- A per-project `neki.toml` (`[project]`, `[inputs]`, `[dev-shell]`, `[packages.<name>]`; see `examples/hello`), later also a Nix-language `flake.neki`
+- A lock file (`neki.lock`, JSON) and `neki lock --update <input>`
+- Dev shells: `neki develop` and `neki shell pkgA pkgB` (ad hoc)
+- `neki build` → a `result` link, `neki run`
 
 **Fetchers / builders:**
-- `fetchurl`, `fetchzip` (zip/tar.gz/tar.xz/7z), `fetchgit`, `fetchFromGitHub`, `fetchMsi`
-- Builders: `runCommand` (PowerShell/cmd/Rust-native), `mkDerivation` with phases (unpack/patch/configure/build/install) for the LLVM-mingw/CMake/Cargo toolchains
-- **Foreign package manager adapters** (the "control all package managers" goal): pinned npm/pip/cargo/go dependencies as fixed-output derivations, generated from their lock files (like `buildNpmPackage`/`buildRustPackage`), plus Scoop/winget manifest import into package recipes
+- `fetchurl`, `fetchzip` (zip/tar.gz/tar.xz), `fetchgit`, `fetchFromGitHub`
+- Builders: commands as argv lists run without a shell (identical on every OS), `mkDerivation`-style phases later
+- **Foreign package manager adapters** (the "control all package managers" goal): pinned npm/pip/cargo/go dependencies as fixed-output derivations, generated from their lock files (like `buildNpmPackage`/`buildRustPackage`)
 
 **Distribution:**
 - Binary caches: `file://` and `https://` substituters, `.narinfo`, `nar.xz`/`nar.zst`, ed25519 signatures, `trusted-public-keys`
@@ -73,7 +73,7 @@ The repo started empty, so this is a greenfield project. The first implementatio
 - Profiles with generations, `profile install/remove/upgrade/rollback/history`
 - GC roots (per project, profile and `result`), `neki gc`, `--delete-older-than`
 
-**Later:** a daemon (Windows service), remote builders over SSH, CA derivations, cross-platform builds for Linux/macOS hosts (the same Rust core runs natively there too).
+**Later (cross-platform):** remote builders over SSH, CA derivations.
 
 ---
 
@@ -83,27 +83,31 @@ The repo started empty, so this is a greenfield project. The first implementatio
 Nix-design/
 ├─ Cargo.toml                 # workspace
 ├─ crates/
-│  ├─ neki-hash/              # sha256/sha1/blake3, nix-base32, SRI, store-path computation
-│  ├─ neki-nar/               # NAR read/write (streaming), Windows-name validation
+│  ├─ neki-platform/          # the only OS-specific code: default dirs, links, read-only, process groups, shell detection
+│  ├─ neki-hash/              # sha256, nix-base32, SRI, store-path computation
+│  ├─ neki-nar/               # NAR read/write (streaming), portable-name validation
 │  ├─ neki-derivation/        # Derivation model, ATerm (de)serialize, hashDerivationModulo
-│  ├─ neki-store/             # LocalStore: layout, SQLite DB, locks, add/query, refs scan, GC, optimise, ACL read-only
-│  ├─ neki-fetch/             # http (reqwest), git (gix), unpack zip/tar/7z/msi, hash verify
-│  ├─ neki-build/             # build scheduler (DAG, parallel jobs), executor, Job Object isolation, env scrubbing, logs
+│  ├─ neki-store/             # LocalStore: layout, SQLite DB, locks, add/query, refs scan, GC, optimise, read-only
+│  ├─ neki-fetch/             # http (reqwest), git (gix), unpack zip/tar, hash verify
+│  ├─ neki-build/             # build scheduler (DAG, parallel jobs), executor, env scrubbing, process-tree kill, logs
 │  ├─ neki-substitute/        # binary-cache client/server, narinfo, signatures (ed25519-dalek)
 │  ├─ neki-eval/              # rnix-parser → AST → lazy evaluator, builtins, string context
-│  ├─ neki-project/           # flake.neki / neki.toml loading, lock file, inputs resolution
-│  ├─ neki-profile/           # profiles, generations, buildEnv merge, shims, shell activation scripts
-│  ├─ neki-shim/              # tiny launcher exe (sets PATH/DLL dirs, execs target)
+│  ├─ neki-project/           # neki.toml / neki.lock loading, inputs resolution
+│  ├─ neki-profile/           # profiles, generations, buildEnv merge, shell activation scripts
+│  ├─ neki-shim/              # tiny launcher exe (reads .shim sidecar, sets PATH/env, runs target)
 │  ├─ neki-core/              # facade API used by CLI + GUI (one place for high-level ops + events)
 │  ├─ neki-cli/               # `neki` binary (clap)
 │  └─ neki-gui/               # Phase 2 – Slint app
-├─ pkgs/                      # our package set (Nix-language), incl. Scoop-imported recipes
+├─ pkgs/                      # our package set
+├─ examples/                  # sample projects (examples/hello/neki.toml)
 └─ tests/                     # integration fixtures (golden NAR/drv/hash vectors)
 ```
 
-**Platform abstraction:** a `platform` module in `neki-store`/`neki-build` with `windows`, `unix` and `macos` implementations (linking: junction vs symlink, read-only: ACL vs chmod, isolation: Job Object vs namespaces), so the same core runs on all three OSes.
+**Platform abstraction:** all OS-specific code is in `neki-platform`, behind functions with identical behaviour on every OS (`link_dir`: symlink vs junction; `spawn_group`/`kill_tree`: process group vs Job Object).
 
-**Key crates:** `sha2`, `data-encoding`, `rusqlite` (bundled), `reqwest` (rustls), `gix`, `zip`, `tar`, `xz2`/`zstd`, `sevenz-rust`, `ed25519-dalek`, `rnix-parser`, `clap`, `tokio`, `tracing`, `windows` (Win32 Job Objects/ACL/junctions), `fs4` (locking), `serde`/`serde_json`/`toml`, and `slint` (Phase 2).
+**Skeleton conventions:** every crate has `Error` (`thiserror`) + `Result`; unimplemented bodies are `todo!("M<n>: …")` (`grep -rn 'todo!' crates/` = remaining work); `neki-core` ops return `Error::NotImplemented("M<n>")` instead of calling stubs, so the CLI never panics. APIs are sync; builds use threads.
+
+**Key crates (added with their milestone):** `sha2`, `data-encoding`, `rusqlite` (bundled), `reqwest` (rustls), `gix`, `zip`, `tar`, `xz2`/`zstd`, `ed25519-dalek`, `rnix-parser`, `windows` (junctions/Job Objects inside `neki-platform`), `fs4` (locking), and `slint` (Phase 2). Already used: `thiserror`, `serde`, `serde_json`, `toml`, `clap`, `anyhow`, `dirs`.
 
 **Format stability:** Neki's own golden vectors (`tests/fixtures/`) define NAR bytes, hashes, `.drv` text and narinfo; changing them is a breaking change.
 
@@ -114,14 +118,15 @@ Nix-design/
 | M | Deliverable | Exit criteria |
 |---|---|---|
 | **M0** | Workspace scaffold, CI (GitHub Actions: windows/macos/ubuntu), `CLAUDE.md`, lint (`clippy -D warnings`, `fmt`) | `cargo test --workspace` green on all 3 OSes |
+| **M0.5** | Cross-platform skeleton: all crate APIs, `neki-platform`, the full CLI, `neki.toml`/`neki.lock` parsing, `neki info` | Builds clippy-clean; `neki info` shows config + project; other commands fail with "planned for M<n>" ✅ |
 | **M1** | `neki-hash` + `neki-nar` | NAR + base32 + store path match committed golden vectors; `neki hash path/file` |
 | **M2** | `neki-store` (local store, DB, `add-to-store`, refs, read-only, locks) | `neki store add <dir>` → `C:\neki\store\<hash>-name`, re-adding is idempotent, `path-info`/`verify` work |
-| **M3** | `neki-derivation` + `neki-build` (executor, Job Object, scheduler, logs) + `neki-fetch` (fetchurl/zip) | Hand-written `.drv` builds; a fixed-output fetch verifies the hash; deps build in DAG order, in parallel |
+| **M3** | `neki-derivation` + `neki-build` (executor, process-tree kill, scheduler, logs) + `neki-fetch` (fetchurl/zip) | Hand-written `.drv` builds; a fixed-output fetch verifies the hash; deps build in DAG order, in parallel |
 | **M4** | `neki-eval` v1 (core language + `derivation` + fetch builtins) and `neki.toml` front end | `neki build` from a `.neki` expression produces a deterministic `.drv` path (golden-tested) |
-| **M5** | `neki-project` (flake-like inputs/outputs, lock file) + `develop`/`shell`/`run` + PowerShell/cmd activation + shims | In a sample project, `neki develop` gives a shell with pinned tools (e.g. Node, Python, Go from Scoop-imported recipes) |
+| **M5** | Input resolution + lock file writing + `develop`/`shell`/`run` + POSIX/PowerShell activation + shims | In a sample project, `neki develop` gives a shell with pinned tools (e.g. Node, Python, Go from prebuilt-archive recipes) on all 3 OSes |
 | **M6** | `neki-profile` (profiles, generations, rollback) + GC (roots, `--delete-older-than`) + optimise | Install → upgrade → rollback works; GC removes only unreachable paths |
 | **M7** | `neki-substitute` (file/http cache, signing, `copy`, `store serve`) | Machine A builds and pushes, machine B substitutes with a verified signature |
-| **M8** | `pkgs/` starter set (~50 packages: Scoop importer + LLVM-mingw stdenv + Cargo/npm/pip adapters) | Example projects for Rust, Node and Python build reproducibly on Windows |
+| **M8** | `pkgs/` starter set (~50 packages: prebuilt-archive recipes per OS + Cargo/npm/pip adapters) | Example projects for Rust, Node and Python build reproducibly on all 3 OSes |
 | **M9** | `neki-core` facade with an event stream (progress, logs) + JSON output for every CLI command | The GUI can drive every operation through the API, without the CLI |
 
 ## Part E: Phase 2, the desktop app (Rust + Slint)
@@ -134,8 +139,28 @@ Nix-design/
   4. **Store browser:** search paths, closure size, a dependency graph, `why-depends`, verify/repair.
   5. **Profiles and generations:** a list, diff between generations, rollback.
   6. **Garbage collection:** a preview of what would be freed, the roots list, run GC/optimise.
-  7. **Caches and settings:** substituters, keys, store root, parallelism, Defender-exclusion helper.
+  7. **Caches and settings:** substituters, keys, store root, parallelism.
 - **Extras:** tray icon with build notifications; a file watcher on project declarations that marks them as "needs rebuild".
+
+---
+
+## Future (not cross-platform yet)
+
+Parked until a solution exists that behaves the same on Windows, macOS and Linux (or a deliberate per-OS exception is accepted):
+
+- Real build sandboxes (namespaces / sandbox-exec / AppContainer) and network blocking for builds (P1)
+- Scoop / winget / Homebrew manifest importers (P2)
+- DLL hardlinking (Windows), RPATH patching (Unix) (P4)
+- Windows symlinks via Developer Mode (P5)
+- MSI/EXE installers, registry, services, drivers (P6)
+- LLVM-mingw stdenv, MSVC as an impure input (P7)
+- ACL / `chattr` hard immutability (P8)
+- Relocatable store root (P9)
+- Escaping non-portable file names (P10)
+- Daemon and multi-user mode (P11), so the GUI can keep builds running after its window closes
+- cmd / fish / Nushell activation, direnv-style auto-activation (P12)
+- Windows delete-on-reboot and a Defender exclusion helper (P14)
+- OS-level declarative configuration (P15)
 
 ---
 
@@ -143,6 +168,6 @@ Nix-design/
 
 - **Golden-vector tests** (per crate): fixtures committed under `tests/fixtures`; `cargo test -p neki-nar` etc.
 - **Integration tests:** a temporary store root per test (`NEKI_STORE_DIR` override) for the cycles build → GC → rebuild and push → substitute.
-- **CI matrix:** windows-latest, macos-latest, ubuntu-latest. Windows jobs run the junction/ACL/Job Object paths.
+- **CI matrix:** windows-latest, macos-latest, ubuntu-latest. Windows jobs run the junction and Job Object paths in `neki-platform`.
 - **End-to-end:** the example projects in `examples/` (rust-hello, node-app, python-tool) must `neki build` with identical output hashes on two clean machines.
 - **Phase 2:** Slint UI smoke tests (`slint::testing`), plus a manual run of `cargo run -p neki-gui` against the example projects.

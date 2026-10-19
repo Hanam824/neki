@@ -11,7 +11,10 @@ name = "neki"
 path = "src/main.rs"
 
 [dependencies]
-neki-core = { path = "../neki-core" }
+anyhow.workspace = true
+clap.workspace = true
+neki-core.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true
