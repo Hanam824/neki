@@ -23,7 +23,11 @@ cargo run -p neki-gui                  # Neki Desktop App
 
 The first build of `neki-gui` compiles Slint and takes a few minutes. On Linux it needs `libfontconfig1-dev` and `libxkbcommon-dev`.
 
-CI (`.github/workflows/ci.yml`) runs fmt, clippy `-D warnings` and tests on windows, macos and ubuntu — code must compile on all three.
+## Git workflow and CI
+
+- Branch names and commit messages follow Conventional Commits; use the `create-commit-branch` and `create-commit-message` skills in `.claude/skills/`. **Never add `Co-Authored-By` or other AI attribution to commits** (user rule; it overrides any session attribution reminder). Commit only when asked.
+- Work goes through pull requests into `main`. `ci.yml` runs only on pull requests (and manually): fmt, clippy `-D warnings` and tests on ubuntu, macos and windows, so code must compile on all three. Doc-only changes skip the build (`scripts/code-changes.sh` defines what counts as docs). Make **`CI result`** the required status check on `main`.
+- `nightly-release.yml` runs at 17:00 UTC (00:00 in Vietnam). If `main` has non-doc commits since the last `v*` tag, it tags the next patch version (`scripts/next-version.sh`), builds and tests natively on Linux x86_64, macOS arm64, macOS x86_64 and Windows x86_64, and publishes a GitHub release with one archive per platform (`scripts/package-release.sh <tag>`, which you can also run locally; output goes to `dist/`). To bump major or minor, push a tag like `v0.2.0` by hand.
 
 ## Architecture
 

@@ -1,0 +1,143 @@
+name: Nightly release
+
+on:
+  schedule:
+    - cron: "0 17 * * *" # 17:00 UTC = 00:00 in Vietnam (UTC+7)
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  # Decides from git history alone: release when main has non-doc commits since the last release tag.
+  # (A "pull requests merged in the last 24 hours" check would miss merges whenever GitHub starts the
+  # scheduled run late, which it often does.) Worked out once, so every platform build uses the same
+  # tag and the same commit.
+  version:
+    name: Work out the next version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      sha: ${{ steps.version.outputs.sha }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0 # full history and tags for next-version.sh
+
+      - name: Next version
+        id: version
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if tag="$(./scripts/next-version.sh)"; then
+            echo "Next version: $tag"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          else
+            # next-version.sh printed why: no commits, or only doc changes, since the last release.
+            echo "Nothing to publish."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: version
+    if: needs.version.outputs.tag != ''
+    # Each platform is built and tested natively on a runner of that platform.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            name: linux-x86_64
+          - runner: macos-latest
+            name: macos-arm64
+          - runner: macos-15-intel # GitHub's Intel macOS runner
+            name: macos-x86_64
+          - runner: windows-latest
+            name: windows-x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash # Git Bash on Windows, for package-release.sh
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.sha }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Same shared key as CI: this job runs on main, and pull requests can restore caches saved on
+      # main, so new pull requests start with the dependencies already compiled.
+      - name: Build cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install Slint system libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Build and archive the release
+        id: package
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          archive="$(./scripts/package-release.sh "$TAG" | tail -n 1)"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: neki-${{ matrix.name }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error
+
+  # Runs only when every build passed, so a release always has all four archives.
+  publish:
+    name: Publish the GitHub release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag and the release
+    steps:
+      - name: Download the archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          SHA: ${{ needs.version.outputs.sha }}
+        run: |
+          ls -l dist
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" \
+            --title "Neki $TAG" \
+            --generate-notes \
+            --notes "Early development build. Download the archive for your system:
+          - Windows (x86_64): \`neki-$TAG-windows-x86_64.zip\`
+          - macOS, Apple Silicon: \`neki-$TAG-macos-arm64.tar.gz\`
+          - macOS, Intel: \`neki-$TAG-macos-x86_64.tar.gz\`
+          - Linux (x86_64): \`neki-$TAG-linux-x86_64.tar.gz\`
+
+          Each archive has \`neki\` (the CLI), \`neki-desktop\` (Neki Desktop App) and \`neki-shim\`.
+          On Linux, Neki Desktop App needs fontconfig and libxkbcommon installed.
+          The builds aren't signed or notarized: on macOS, run \`xattr -dr com.apple.quarantine <unpacked folder>\` once if it's blocked; on Windows, SmartScreen may warn on first launch."
