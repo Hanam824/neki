@@ -19,8 +19,8 @@ It follows [Nix](https://nixos.org/guides/how-nix-works/)'s design: packages liv
 You need a stable [Rust toolchain](https://rustup.rs/). On Linux, the desktop app also needs `libfontconfig1-dev` and `libxkbcommon-dev` (Debian/Ubuntu package names).
 
 ```sh
-git clone <this repository>
-cd Nix-design
+git clone https://github.com/Hanam824/neki.git
+cd neki
 cargo build --release
 ```
 
@@ -98,7 +98,7 @@ The store location is fixed so that store paths are identical on every machine. 
 
 ## Downloads
 
-Once the repository is on GitHub, a nightly workflow publishes a release whenever `main` has changed. Each release has archives for Windows (x86_64), macOS (Apple Silicon and Intel) and Linux (x86_64). The builds aren't signed. On macOS, run `xattr -dr com.apple.quarantine <unpacked folder>` once if macOS blocks them.
+A nightly workflow publishes a [GitHub release](https://github.com/Hanam824/neki/releases) whenever `main` has changed. Each release has archives for Windows (x86_64), macOS (Apple Silicon and Intel) and Linux (x86_64). The builds aren't signed. On macOS, run `xattr -dr com.apple.quarantine <unpacked folder>` once if macOS blocks them.
 
 ## Repository layout
 
