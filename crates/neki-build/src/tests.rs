@@ -59,7 +59,9 @@ impl Drop for Env {
 }
 
 /// A `builtin:run` derivation that runs `script` with the system shell
-/// (`unix` with /bin/sh, `windows` with cmd.exe).
+/// (`unix` with /bin/sh, `windows` with cmd.exe). The Windows scripts use
+/// no double quotes: Rust escapes them as `\"`, which cmd.exe doesn't
+/// understand (the test paths have no spaces).
 fn script(name: &str, unix: &str, windows: &str) -> Derivation {
     let argv = if cfg!(windows) {
         let cmd =
@@ -93,12 +95,12 @@ fn builds_a_chain_in_order_and_records_references() {
     let dep = env.add(script(
         "dep",
         "mkdir -p \"$out\" && echo dep-data > \"$out/file\"",
-        "mkdir \"%out%\" && echo dep-data> \"%out%\\file\"",
+        "mkdir %out% && echo dep-data> %out%\\file",
     ));
     let mut top = script(
         "top",
         "mkdir -p \"$out\" && cat \"$dep/file\" > \"$out/copy\" && echo \"$dep\" > \"$out/ref\"",
-        "mkdir \"%out%\" && type \"%dep%\\file\" > \"%out%\\copy\" && echo %dep%> \"%out%\\ref\"",
+        "mkdir %out% && type %dep%\\file > %out%\\copy && echo %dep%> %out%\\ref",
     );
     top.input_drvs = BTreeMap::from([(dep.clone(), BTreeSet::from(["out".into()]))]);
     let dep_out = env
@@ -145,7 +147,7 @@ fn failed_builds_leave_nothing_behind() {
     let drv = env.add(script(
         "fails",
         "mkdir -p \"$out\"; echo something went wrong; exit 3",
-        "mkdir \"%out%\" & echo something went wrong& exit 3",
+        "mkdir %out% & echo something went wrong& exit 3",
     ));
     let err = env.realise(std::slice::from_ref(&drv)).unwrap_err();
     let Error::BuildFailed { log, .. } = err else {
@@ -178,7 +180,7 @@ fn environment_is_scrubbed() {
     let drv = env.add(script(
         "env",
         "mkdir -p \"$out\" && echo \"[$CARGO_PKG_NAME][$PATH]\" > \"$out/env\"",
-        "mkdir \"%out%\" && echo [%CARGO_PKG_NAME%][%PATH%]> \"%out%\\env\"",
+        "mkdir %out% && echo [%CARGO_PKG_NAME%][%PATH%]> %out%\\env",
     ));
     let results = env.realise(&[drv]).unwrap();
     let text = fs::read_to_string(env.out(&results[0]).join("env")).unwrap();
@@ -199,7 +201,12 @@ fn run_expands_variables_and_copies_src() {
 
     let mut drv = script("copy", "", "");
     let copy = if cfg!(windows) {
-        vec![std::env::var("ComSpec").unwrap(), "/d".into(), "/c".into(), "mkdir \"${out}\" && copy input.txt \"${out}\\got.txt\" && echo $$HOME> \"${out}\\dollar\"".into()]
+        vec![
+            std::env::var("ComSpec").unwrap(),
+            "/d".into(),
+            "/c".into(),
+            "mkdir ${out} && copy input.txt ${out}\\got.txt && echo $$HOME> ${out}\\dollar".into(),
+        ]
     } else {
         vec![
             "/bin/sh".into(),
