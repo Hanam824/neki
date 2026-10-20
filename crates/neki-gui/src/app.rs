@@ -27,6 +27,8 @@ struct State {
     neki: Arc<Neki>,
     registry: Registry,
     entries: Vec<Entry>,
+    /// The last build started, for "Retry".
+    last_build: Option<(Project, String)>,
     /// Re-checks which projects changed since their last build.
     _watcher: slint::Timer,
 }
@@ -56,6 +58,7 @@ pub fn install(ui: &AppWindow) {
         neki,
         registry,
         entries: Vec::new(),
+        last_build: None,
         _watcher: slint::Timer::default(),
     }));
     refresh(&mut state.borrow_mut(), ui);
@@ -115,27 +118,16 @@ fn connect(ui: &AppWindow, state: &Shared) {
         save_manifest(&mut state.borrow_mut(), &ui, &text);
     }));
     app.on_build_project(handler!(|ui, state, package: SharedString| {
-        let state = state.borrow();
-        let Some(project) = selected_project(&state, &ui) else {
+        let Some(project) = selected_project(&state.borrow(), &ui) else {
             return;
         };
-        let store_dir = state.neki.config().store_dir.clone();
-        let label = format!("Building {}#{package}", project.manifest.project.name);
-        spawn_task(
-            &ui,
-            &state.neki,
-            label,
-            move |neki, events| neki.build(&project, Some(package.as_str()), events),
-            move |ui, paths| {
-                for path in paths {
-                    push_log(
-                        ui,
-                        Level::Ok,
-                        store_dir.join(path.to_string()).display().to_string(),
-                    );
-                }
-            },
-        );
+        start_build(&mut state.borrow_mut(), &ui, project, package.to_string());
+    }));
+    app.on_retry_build(handler!(|ui, state| {
+        let last = state.borrow().last_build.clone();
+        if let Some((project, package)) = last {
+            start_build(&mut state.borrow_mut(), &ui, project, package);
+        }
     }));
     app.on_lock_project(handler!(|ui, state| {
         let state = state.borrow();
@@ -217,6 +209,38 @@ fn connect(ui: &AppWindow, state: &Shared) {
         ui.global::<AppState>()
             .set_log(ModelRc::new(VecModel::<LogEntry>::default()));
     }));
+}
+
+/// Build `package` of `project`, remembering it for "Retry", which a failure
+/// enables.
+fn start_build(state: &mut State, ui: &AppWindow, project: Project, package: String) {
+    state.last_build = Some((project.clone(), package.clone()));
+    ui.global::<AppState>().set_can_retry(false);
+    let store_dir = state.neki.config().store_dir.clone();
+    let label = format!("Building {}#{package}", project.manifest.project.name);
+    spawn_task(
+        ui,
+        &state.neki,
+        label.clone(),
+        // The result is handled here, not by `spawn_task`, so a failure can
+        // enable "Retry".
+        move |neki, events| Ok(neki.build(&project, Some(package.as_str()), events)),
+        move |ui, result| match result {
+            Ok(paths) => {
+                for path in paths {
+                    push_log(
+                        ui,
+                        Level::Ok,
+                        store_dir.join(path.to_string()).display().to_string(),
+                    );
+                }
+            }
+            Err(err) => {
+                push_log(ui, Level::Error, format!("{label}: {err}"));
+                ui.global::<AppState>().set_can_retry(true);
+            }
+        },
+    );
 }
 
 /// Every few seconds, update each project's build state in the list, so
