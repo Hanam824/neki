@@ -108,6 +108,13 @@ export component StorePage inherits VerticalLayout {
             }
         }
         Button {
+            text: "Repair";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.store-action("repair");
+            }
+        }
+        Button {
             text: "Preview garbage collection";
             enabled: !AppState.busy;
             clicked => {

@@ -275,6 +275,28 @@ impl LocalStore {
         Ok(file)
     }
 
+    /// Replace the contents of the valid path `path` (found modified by
+    /// [`LocalStore::verify`]) with the tree at `fixed`, which must have
+    /// exactly the NAR hash and size recorded for `path`.
+    pub fn replace_contents(&self, path: &StorePath, fixed: &Path) -> Result<()> {
+        let info = self
+            .query_path_info(path)?
+            .ok_or_else(|| Error::NotValid(path.to_string()))?;
+        let (hash, size) = nar_hash(fixed)?;
+        if hash != info.nar_hash || size != info.nar_size {
+            return Err(Error::HashMismatch {
+                what: format!("the replacement for {path}"),
+                expected: info.nar_hash.to_sri(),
+                got: hash.to_sri(),
+            });
+        }
+        let _lock = self.lock()?;
+        let dest = self.dir.to_path(path);
+        neki_platform::fs::remove_tree(&dest).map_err(at(&dest))?;
+        fs::rename(fixed, &dest).map_err(at(&dest))?;
+        make_readonly(&dest)
+    }
+
     /// Delete whatever is at the location of `path`, which must not be
     /// valid: leftovers of an interrupted build, before building it again.
     pub fn clear_invalid(&self, path: &StorePath) -> Result<()> {

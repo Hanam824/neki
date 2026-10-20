@@ -424,6 +424,27 @@ pub fn store_action(ui: &AppWindow, neki: &Arc<Neki>, action: &str) {
                 }
             },
         ),
+        "repair" => spawn_task(
+            ui,
+            neki,
+            "Repairing the store",
+            |neki, events| neki.repair(&[], events),
+            |ui, report| {
+                if report.repaired.is_empty() && report.failed.is_empty() {
+                    push_log(
+                        ui,
+                        Level::Ok,
+                        "Nothing to repair: all store paths are intact",
+                    );
+                }
+                for path in &report.repaired {
+                    push_log(ui, Level::Ok, format!("Repaired {path}"));
+                }
+                for (path, why) in &report.failed {
+                    push_log(ui, Level::Error, format!("Cannot repair {path}: {why}"));
+                }
+            },
+        ),
         "gc-preview" => spawn_task(
             ui,
             neki,

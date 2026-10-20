@@ -181,11 +181,60 @@ fn serves_a_store_over_http() {
     let server = CacheServer::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}", server.addr().unwrap());
     std::thread::scope(|scope| {
-        scope.spawn(|| server.run(a.store(), Some(&key)));
+        scope.spawn(|| server.run(a.store(), Some(&key), None));
         let cache = BinaryCache::new(&url, vec![key.public()]);
         assert!(cache.substitute(b.store(), &app).unwrap());
         assert!(cache.query(b.store().store_dir(), &app).unwrap().is_some());
         server.stop();
     });
     assert!(b.store().is_valid_path(&app).unwrap());
+}
+
+#[test]
+fn pushes_over_http_to_a_server_that_trusts_the_key() {
+    let (_root, a, b) = machines();
+    let key = SecretKey::generate("push-1").unwrap();
+    let stranger = SecretKey::generate("stranger-1").unwrap();
+    let app = add_closure(&a);
+    // B serves its store and accepts uploads signed by `key`.
+    let trusted = [key.public()];
+    let server = CacheServer::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", server.addr().unwrap());
+    let closed = CacheServer::bind("127.0.0.1:0").unwrap();
+    let closed_url = format!("http://{}", closed.addr().unwrap());
+    std::thread::scope(|scope| {
+        scope.spawn(|| server.run(b.store(), None, Some(&trusted)));
+        scope.spawn(|| closed.run(b.store(), None, None));
+        let cache = BinaryCache::new(&url, vec![]);
+
+        let err = cache
+            .push(a.store(), std::slice::from_ref(&app), &stranger)
+            .unwrap_err();
+        assert!(err.to_string().contains("rejected"), "{err}");
+        assert!(!b.store().is_valid_path(&app).unwrap());
+
+        let err = BinaryCache::new(&closed_url, vec![])
+            .push(a.store(), std::slice::from_ref(&app), &key)
+            .unwrap_err();
+        assert!(err.to_string().contains("--allow-push"), "{err}");
+
+        // The reference first, then the app.
+        let uploaded = cache
+            .push(a.store(), std::slice::from_ref(&app), &key)
+            .unwrap();
+        assert_eq!(uploaded.len(), 2);
+        assert_eq!(uploaded[1], app);
+        assert!(
+            cache
+                .push(a.store(), std::slice::from_ref(&app), &key)
+                .unwrap()
+                .is_empty()
+        );
+        server.stop();
+        closed.stop();
+    });
+    let info = b.store().query_path_info(&app).unwrap().unwrap();
+    assert_eq!(info.references.len(), 1);
+    assert!(!info.signatures.is_empty());
+    assert!(b.store().verify().unwrap().is_empty());
 }

@@ -108,9 +108,9 @@ Every command accepts `--json` (the result as JSON) and `--log-format json` (pro
 | `neki lock [--update input]` | Pin the project's inputs in `neki.lock` |
 | `neki eval <expr>` | Evaluate an expression |
 | `neki profile install\|remove\|upgrade\|rollback\|switch\|history\|list` | Manage profiles (add `<state>/profiles/default/current/bin` to `PATH`) |
-| `neki store add\|path-info\|ls\|closure\|why-depends\|roots\|verify\|gc\|optimise` | Inspect and maintain the store (`gc --dry-run`, `--delete-older-than 30d`) |
-| `neki store serve` | Serve the store as a binary cache over HTTP |
-| `neki cache keygen\|push\|fetch` | Sign and upload to a `file://` cache, or download from any cache |
+| `neki store add\|path-info\|ls\|closure\|why-depends\|roots\|verify\|repair\|gc\|optimise` | Inspect and maintain the store (`gc --dry-run`, `--delete-older-than 30d`; `repair` fixes modified paths from a cache or by rebuilding) |
+| `neki store serve` | Serve the store as a binary cache over HTTP (`--allow-push` accepts uploads signed by a trusted key) |
+| `neki cache keygen\|push\|fetch` | Sign and upload to a `file://` cache or a server started with `--allow-push`, or download from any cache |
 | `neki hash path\|file` | Hash a file tree (as a NAR) or a file's contents |
 
 Run `neki --help` or `neki <command> --help` for details.

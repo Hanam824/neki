@@ -108,6 +108,79 @@ pub fn build(
     }
 }
 
+/// Build output `output` of `drv_path` again into the new location `dest`
+/// instead of its store path (to repair a modified path). Its inputs are
+/// realised first; nothing is registered. Other outputs are built into
+/// scratch locations next to `dest` and deleted.
+pub fn build_into(
+    store: &LocalStore,
+    drv_path: &StorePath,
+    output: &str,
+    dest: &Path,
+    opts: &BuildOptions,
+    events: Events,
+) -> Result<()> {
+    let mut drv = store.read_derivation(drv_path)?;
+    if !drv.outputs.contains_key(output) {
+        return Err(invalid(&format!("{drv_path} has no output `{output}`")));
+    }
+    let inputs: Vec<StorePath> = drv.input_drvs.keys().cloned().collect();
+    crate::realise(store, &inputs, opts, events)?;
+    let _gc = store.gc_guard()?;
+    let scratch: Vec<PathBuf> = drv
+        .outputs
+        .keys()
+        .filter(|name| *name != output)
+        .map(|name| {
+            dest.with_file_name(format!(
+                "{}-{name}",
+                dest.file_name().unwrap_or_default().to_string_lossy()
+            ))
+        })
+        .collect();
+    let mut others = scratch.iter();
+    for name in drv.outputs.keys().cloned().collect::<Vec<_>>() {
+        let location = if name == output {
+            dest.to_path_buf()
+        } else {
+            others.next().expect("one per other output").clone()
+        };
+        drv.env.insert(name, location.display().to_string());
+    }
+    let name = drv.name()?.to_string();
+    let log_dir = store.state_dir().join("log");
+    fs::create_dir_all(&log_dir).map_err(at(&log_dir))?;
+    let log_path = log_dir.join(format!("{}-{name}-repair.log", drv_path.hash_part()));
+    let log = Logger {
+        file: Mutex::new(File::create(&log_path).map_err(at(&log_path))?),
+        drv: drv_path.clone(),
+        events,
+    };
+    let build_dir = store
+        .state_dir()
+        .join("builds")
+        .join(format!("{}-{name}-repair", drv_path.hash_part()));
+    neki_platform::fs::remove_tree(&build_dir).map_err(at(&build_dir))?;
+    events(BuildEvent::Started {
+        drv: drv_path.clone(),
+    });
+    let stop = || opts.cancel.load(std::sync::atomic::Ordering::Relaxed);
+    let result = run_builder(&drv, &build_dir, opts, &stop, &log);
+    events(BuildEvent::Finished {
+        drv: drv_path.clone(),
+        success: result.is_ok(),
+    });
+    let _ = neki_platform::fs::remove_tree(&build_dir);
+    for path in &scratch {
+        let _ = neki_platform::fs::remove_tree(path);
+    }
+    result.map_err(|err| Error::BuildFailed {
+        drv: drv_path.to_string(),
+        reason: err.to_string(),
+        log: log_path,
+    })
+}
+
 /// Writes builder output to the log file and the event callback.
 struct Logger<'a> {
     file: Mutex<File>,

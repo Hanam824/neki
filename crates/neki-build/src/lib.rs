@@ -32,6 +32,7 @@ mod builder;
 mod builtins;
 mod schedule;
 
+pub use builder::build_into;
 pub use schedule::realise;
 
 use std::collections::BTreeMap;
