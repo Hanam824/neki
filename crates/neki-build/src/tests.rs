@@ -378,10 +378,11 @@ fn unpack_and_assemble() {
     );
     assert!(merged.join("lib/a").is_file() && merged.join("lib/b").is_file());
     assert_eq!(neki_store::bin_dirs(&merged), [merged.join("bin")]);
-    if cfg!(unix) {
-        let meta = fs::metadata(merged.join("bin/tool")).unwrap();
-        assert!(neki_platform::fs::is_executable(&meta));
-    }
+    let tool = merged.join("bin/tool");
+    assert!(neki_platform::fs::is_executable(
+        &tool,
+        &fs::metadata(&tool).unwrap()
+    ));
 
     // `install` puts a single file in place as a program.
     let installed = unpack("installed", &[("install", "bin/the-tool")]);

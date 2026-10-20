@@ -149,14 +149,10 @@ fn fetch_archive_unpacks_and_strips_the_root() {
         } else {
             tree.join("bin/tool")
         };
-        if cfg!(unix) {
-            assert!(
-                neki_platform::fs::is_executable(&fs::metadata(&exe).unwrap()),
-                "{name}"
-            );
-        } else {
-            assert!(exe.is_file());
-        }
+        assert!(
+            neki_platform::fs::is_executable(&exe, &fs::metadata(&exe).unwrap()),
+            "{name}"
+        );
 
         // With the hash known, the same path is found without downloading.
         let hash = env
@@ -256,4 +252,54 @@ fn entries_differing_only_by_case_are_left_out() {
     assert!(dest.join("t/2/2621a").is_file() && dest.join("t/ok").is_file());
     // The result is a valid (portable) store tree.
     neki_nar::dump(&dest, &mut Vec::new()).unwrap();
+}
+
+/// A local repository with a script committed as executable (set through
+/// the index, so it works where the OS has no executable bit).
+#[test]
+fn git_checkout_marks_executables() {
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    fs::create_dir(&repo).unwrap();
+    fs::write(repo.join("run.sh"), "echo hi\n").unwrap();
+    fs::write(repo.join("README"), "hi\n").unwrap();
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args([
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "core.autocrlf=false",
+            ])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8(out.stdout).unwrap()
+    };
+    git(&["init", "--quiet"]);
+    git(&["add", "run.sh", "README"]);
+    git(&["update-index", "--chmod=+x", "run.sh"]);
+    git(&["commit", "--quiet", "-m", "init"]);
+    let rev = git(&["rev-parse", "HEAD"]);
+
+    let dest = dir.path().join("checkout");
+    let url = repo.to_str().unwrap();
+    git_checkout(url, rev.trim(), &dest).unwrap();
+    let is_exec = |name: &str| {
+        let path = dest.join(name);
+        neki_platform::fs::is_executable(&path, &fs::metadata(&path).unwrap())
+    };
+    assert!(is_exec("run.sh"));
+    assert!(!is_exec("README"));
+    assert!(!dest.join(".git").exists());
+    neki_platform::fs::remove_tree(dir.path()).unwrap();
 }

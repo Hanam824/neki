@@ -28,7 +28,7 @@ Rule: one behaviour on every OS. Where the OS mechanism differs but the behaviou
 | P7 | Toolchains | Compilers are normal inputs; no toolchain bundled yet | LLVM-mingw stdenv, MSVC as an impure system input (it can't be redistributed) |
 | P8 | Store immutability | `std` read-only permission on registered files, plus `neki store verify` | Windows deny-write ACL, `chattr +i` |
 | P9 | Store root | Fixed per OS family: `C:\neki\store` (Windows) or `/opt/neki/store` (macOS + Linux; `/opt` needs no synthetic APFS volume on macOS); state in `C:\neki\var` / `/opt/neki/var`; overridable with `NEKI_STORE_DIR` / `NEKI_STATE_DIR` | Relocatable stores |
-| P10 | File names | The NAR unpacker rejects names invalid on **any** supported OS (Windows reserved names/chars, trailing dot/space) so store contents are portable. Archives are unpacked leaving out entries that differ only by case from an earlier one (logged), e.g. ncurses terminfo in Linux releases. The exec bit is stored in the NAR and applied only on Unix | Escaping instead of rejection |
+| P10 | File names | The NAR unpacker rejects names invalid on **any** supported OS (Windows reserved names/chars, trailing dot/space) so store contents are portable. Archives are unpacked leaving out entries that differ only by case from an earlier one (logged), e.g. ncurses terminfo in Linux releases. The exec bit is stored in the NAR and kept on every OS: a permission bit on Unix, an empty `:neki-executable` alternate data stream on Windows (NTFS/ReFS), set from tar/zip modes, git's `100755` and NARs | Escaping instead of rejection |
 | P11 | Daemon / multi-user | Single-user, in-process | Daemon (Unix socket / named pipe), multi-user |
 | P12 | Shells | `neki develop`/`neki shell` spawn a child shell with the env applied (`$SHELL` on Unix, PowerShell on Windows). Activation scripts for POSIX sh and PowerShell (pwsh runs on all 3 OSes) | cmd, fish and Nushell scripts, direnv-style auto-activation |
 | P13 | Reference scanning | Scan outputs for hashes in UTF-8 **and** UTF-16LE on every OS | — |
@@ -165,7 +165,6 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 - Scoop / winget / Homebrew manifest importers (P2)
 - DLL hardlinking (Windows), RPATH patching (Unix) (P4)
 - Windows symlinks via Developer Mode (P5). Until then, unpacking a NAR that contains a symlink fails on Windows with a clear error
-- Executable bit on Windows (P10): Windows has no such bit, so NARs made there mark nothing executable, and a tree with executables hashes differently than on Unix. Fix: carry the bit from archive metadata (tar/zip) straight into the NAR in the unpacker. (Packages are per-system anyway, so this only matters for sources shared between OSes)
 - Tray icon with build notifications: needs `libappindicator`/StatusNotifier on Linux, which isn't available everywhere
 - Syntax-highlighted `neki.toml` editor: Slint has no code editor widget
 - Language adapters: npm packages with install scripts; Python packages built from source (sdists), because Python on Windows needs MSVC to compile them (prebuilt platform wheels work); Cargo `git` dependencies whose `Cargo.toml` inherits fields from their workspace (`version.workspace = true`), which `cargo vendor` would normalize

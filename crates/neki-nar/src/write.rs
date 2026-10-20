@@ -43,7 +43,7 @@ fn dump_node(path: &Path, w: &mut Writer<impl Write>) -> Result<()> {
         }
     } else if file_type.is_file() {
         w.str(b"regular")?;
-        if neki_platform::fs::is_executable(&meta) {
+        if neki_platform::fs::is_executable(path, &meta) {
             w.strs(&[b"executable", b""])?;
         }
         w.str(b"contents")?;

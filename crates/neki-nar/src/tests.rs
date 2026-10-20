@@ -81,13 +81,10 @@ fn round_trips_a_tree() {
         fs::read_to_string(out.join("nine-bytes")).unwrap(),
         "123456789"
     );
+    let is_exec = |p: &Path| neki_platform::fs::is_executable(p, &fs::metadata(p).unwrap());
+    assert!(is_exec(&out.join("bin/tool")));
+    assert!(!is_exec(&out.join("nine-bytes")));
     if cfg!(unix) {
-        assert!(neki_platform::fs::is_executable(
-            &fs::metadata(out.join("bin/tool")).unwrap()
-        ));
-        assert!(!neki_platform::fs::is_executable(
-            &fs::metadata(out.join("nine-bytes")).unwrap()
-        ));
         assert_eq!(
             fs::read_link(out.join("link")).unwrap(),
             Path::new("bin/tool")
@@ -97,9 +94,6 @@ fn round_trips_a_tree() {
 
 #[test]
 fn executable_flag_is_archived() {
-    if !cfg!(unix) {
-        return; // Windows has no executable bit to read.
-    }
     let dir = tempfile::tempdir().unwrap();
     let file = dir.path().join("run");
     fs::write(&file, "x").unwrap();
