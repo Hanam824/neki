@@ -1,15 +1,25 @@
 [package]
 name = "neki-substitute"
-description = "Binary cache client and server"
+description = "Binary caches: narinfo, signatures, upload, download and serving"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+data-encoding.workspace = true
+ed25519-dalek.workspace = true
+getrandom.workspace = true
 neki-hash.workspace = true
+neki-nar.workspace = true
 neki-store.workspace = true
 thiserror.workspace = true
+tiny_http.workspace = true
+ureq.workspace = true
+zstd.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
