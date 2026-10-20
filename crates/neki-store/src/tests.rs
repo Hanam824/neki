@@ -410,3 +410,32 @@ fn filtered_adds_skip_rejected_entries() {
     assert!(dest.join("keep.txt").is_file() && dest.join("sub/ok").is_file());
     assert!(!dest.join(".git").exists() && !dest.join("sub/drop.log").exists());
 }
+
+#[test]
+fn temp_roots_last_while_held() {
+    let t = TestStore::new();
+    let s = t.store();
+    let path = s.add_path("held", &t.source(&[("f", "1")])).unwrap();
+    let root = s.add_temp_root(&path).unwrap();
+    assert!(
+        s.collect_garbage(&GcOptions::default())
+            .unwrap()
+            .deleted
+            .is_empty()
+    );
+    drop(root);
+    assert_eq!(
+        s.collect_garbage(&GcOptions::default()).unwrap().deleted,
+        std::slice::from_ref(&path)
+    );
+
+    // A root file left by a process that ended (nobody holds its lock).
+    let other = s.add_path("other", &t.source(&[("f", "2")])).unwrap();
+    let dir = s.state_dir().join("temproots");
+    fs::write(dir.join(format!("1-0-{other}")), "").unwrap();
+    assert_eq!(
+        s.collect_garbage(&GcOptions::default()).unwrap().deleted,
+        [other]
+    );
+    assert_eq!(fs::read_dir(dir).unwrap().count(), 0);
+}

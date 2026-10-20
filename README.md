@@ -4,13 +4,13 @@ Neki is a declarative, reproducible package manager, written in Rust, that runs 
 
 It follows [Nix](https://nixos.org/guides/how-nix-works/)'s design: packages live in an immutable, content-addressed store; builds are described as derivations; and each project declares its tools and dependencies in one file, pinned by a lock file. Nix itself only runs on Linux and macOS, so Neki rebuilds that architecture in Rust, choosing solutions that behave the same on all three operating systems. Neki is a separate tool. It isn't compatible with Nix, nixpkgs or Nix binary caches.
 
-> **Status: early.** Every milestone of the [plan](docs/PLAN.md) is implemented and tested, and the example projects build and run on macOS. The Windows and Linux runs of the package set (`.github/workflows/pkgs.yml`) haven't happened yet, so expect rough edges there. Things that can't work the same on every OS yet are listed under [Future](docs/PLAN.md#future-not-cross-platform-yet).
+> **Status: early.** Every milestone of the [plan](docs/PLAN.md) is implemented and tested, and the example projects build, run and rebuild bit-for-bit on Linux, macOS and Windows (`.github/workflows/pkgs.yml`). Things that can't work the same on every OS yet are listed under [Future](docs/PLAN.md#future-not-cross-platform-yet).
 
 ## What it does
 
 - **Per-project environments.** A project's `neki.toml` names the tools it needs; `neki develop` opens a shell with exactly those versions, and `neki.lock` pins them.
 - **Reproducible builds.** Builds run with a scrubbed environment, only declared inputs on `PATH`, and every download checked against a hash. Building again gives the same bytes.
-- **A package set** of 42 prebuilt tools (Node.js, Python, Go, Rust, Zig, Java, Deno, Bun, ripgrep, jq, gh, kubectl, Terraform, …) for macOS, Linux and Windows, every hash taken from upstream's published checksums.
+- **A package set** of 50 prebuilt tools (Node.js, Python, Go, Rust, Zig, Java, Deno, Bun, ripgrep, jq, gh, kubectl, Terraform, …) for macOS, Linux and Windows, every hash taken from upstream's published checksums.
 - **Language adapters** that build Cargo, npm and Python projects offline from their lock files.
 - **Profiles** with generations and rollback, for tools you want everywhere.
 - **Binary caches**: sign and push builds, serve a store over HTTP, and download instead of building.

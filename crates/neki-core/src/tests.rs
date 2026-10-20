@@ -224,7 +224,13 @@ fn develop_and_shell_environments() {
         .neki
         .shell(None, &["test.greeter".into()], &NullSink)
         .unwrap();
-    assert!(adhoc.path_prepend[0].exists());
+    let bin = adhoc.env.path_prepend[0].clone();
+    // Kept while the shell lives, collectable afterwards.
+    env.neki.gc(&GcOptions::default()).unwrap();
+    assert!(bin.exists());
+    drop(adhoc);
+    env.neki.gc(&GcOptions::default()).unwrap();
+    assert!(!bin.exists());
     let script = render_activation(&shell, Shell::PowerShell);
     assert!(script.contains("$env:GREETING = 'hi'"));
 }

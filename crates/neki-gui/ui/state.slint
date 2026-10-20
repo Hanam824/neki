@@ -85,6 +85,8 @@ export global AppState {
     in-out property <[BuildItem]> builds;
     in-out property <int> selected-build: -1;
     in-out property <[string]> build-log;
+    // Whether the last build failed and can be started again.
+    in-out property <bool> can-retry: false;
 
     // Store
     in-out property <string> store-dir;
@@ -122,6 +124,7 @@ export global AppState {
 
     callback select-build(int);
     callback cancel-build();
+    callback retry-build();
 
     // "verify", "gc-preview", "gc" or "optimise".
     callback store-action(string);

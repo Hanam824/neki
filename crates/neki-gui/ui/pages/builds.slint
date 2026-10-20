@@ -16,6 +16,13 @@ export component BuildsPage inherits VerticalLayout {
             vertical-alignment: center;
         }
         Button {
+            text: "Retry";
+            enabled: !AppState.busy && AppState.can-retry;
+            clicked => {
+                AppState.retry-build();
+            }
+        }
+        Button {
             text: "Cancel build";
             enabled: AppState.busy;
             clicked => {

@@ -184,6 +184,44 @@ GITHUB = {
         "x86_64-windows": r"_windows_amd64\.exe$",
     }, {"install": "shfmt"}),
     "actionlint": ("rhysd/actionlint", go_style(r"actionlint_[\d.]+")),
+    "bottom": ("ClementTsang/bottom", rust_triples(prefix=r"^bottom_", linux="musl", arm_linux="musl")),
+    "difftastic": ("Wilfred/difftastic", rust_triples(prefix=r"^difft-[\d.]+-", linux="musl", arm_linux="gnu")),
+    "trivy": ("aquasecurity/trivy", {
+        "aarch64-darwin": r"_macOS-ARM64\.tar\.gz$",
+        "x86_64-darwin": r"_macOS-64bit\.tar\.gz$",
+        "x86_64-linux": r"_Linux-64bit\.tar\.gz$",
+        "aarch64-linux": r"_Linux-ARM64\.tar\.gz$",
+        "x86_64-windows": r"_windows-64bit\.zip$",
+    }),
+    "act": ("nektos/act", {
+        "aarch64-darwin": r"^act_Darwin_arm64\.tar\.gz$",
+        "x86_64-darwin": r"^act_Darwin_x86_64\.tar\.gz$",
+        "x86_64-linux": r"^act_Linux_x86_64\.tar\.gz$",
+        "aarch64-linux": r"^act_Linux_arm64\.tar\.gz$",
+        "x86_64-windows": r"^act_Windows_x86_64\.zip$",
+    }),
+    "pnpm": ("pnpm/pnpm", {
+        "aarch64-darwin": r"^pnpm-darwin-arm64\.tar\.gz$",
+        "x86_64-darwin": r"^pnpm-darwin-x64\.tar\.gz$",
+        "x86_64-linux": r"^pnpm-linux-x64\.tar\.gz$",
+        "aarch64-linux": r"^pnpm-linux-arm64\.tar\.gz$",
+        "x86_64-windows": r"^pnpm-win32-x64\.zip$",
+    }),
+    "gitleaks": ("gitleaks/gitleaks", go_style(r"gitleaks_[\d.]+", amd64="x64")),
+    "hadolint": ("hadolint/hadolint", {
+        "aarch64-darwin": r"^hadolint-macos-arm64$",
+        "x86_64-darwin": r"^hadolint-macos-x86_64$",
+        "x86_64-linux": r"^hadolint-linux-x86_64$",
+        "aarch64-linux": r"^hadolint-linux-arm64$",
+        "x86_64-windows": r"^hadolint-windows-x86_64\.exe$",
+    }, {"install": "hadolint"}),
+    "biome": ("biomejs/biome", {
+        "aarch64-darwin": r"^biome-darwin-arm64$",
+        "x86_64-darwin": r"^biome-darwin-x64$",
+        "x86_64-linux": r"^biome-linux-x64$",
+        "aarch64-linux": r"^biome-linux-arm64$",
+        "x86_64-windows": r"^biome-win32-x64\.exe$",
+    }, {"install": "biome"}),
     "direnv": ("direnv/direnv", {
         "aarch64-darwin": r"^direnv\.darwin-arm64$",
         "x86_64-darwin": r"^direnv\.darwin-amd64$",
@@ -197,7 +235,7 @@ GITHUB = {
 def from_github(name, repo, patterns, options):
     release = github(f"repos/{repo}/releases/latest")
     tag = release["tag_name"]
-    version = re.sub(r"^(bun-v|v|jq-|release-)", "", tag)
+    version = re.sub(r"^(bun-v|@biomejs/biome@|v|jq-|release-)", "", tag)
     systems = {}
     for system, pattern in patterns.items():
         assets = [a for a in release["assets"] if re.search(pattern, a["name"]) and not a["name"].endswith((".sha256", ".sig", ".asc", ".sbom", ".json"))]
