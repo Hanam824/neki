@@ -82,7 +82,7 @@ jobs:
           hashes() {
             for example in hello node-app python-tool rust-hello; do
               out="$("$neki" --json -C "examples/$example" build | tr -d '\n' | sed -E 's/.*[\\/]([0-9a-z]{32}-[^"\\/]+)".*/\1/')"
-              "$neki" --json store path-info "$out" | grep narHash
+              echo "$example $("$neki" --json store path-info "$out" | grep narHash)"
             done
           }
           for example in hello node-app python-tool rust-hello; do
@@ -92,5 +92,4 @@ jobs:
           for example in hello node-app python-tool rust-hello; do rm "examples/$example/result"; done
           "$neki" store gc
           after="$(hashes)"
-          echo "$after"
-          [ "$before" = "$after" ]
+          diff <(echo "$before") <(echo "$after") && echo "Every output rebuilt bit-for-bit."
