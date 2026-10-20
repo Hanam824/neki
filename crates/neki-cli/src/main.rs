@@ -44,6 +44,7 @@ enum LogFormat {
 enum ShellKind {
     Posix,
     Powershell,
+    Nushell,
 }
 
 impl From<ShellKind> for Shell {
@@ -51,6 +52,7 @@ impl From<ShellKind> for Shell {
         match kind {
             ShellKind::Posix => Shell::Posix,
             ShellKind::Powershell => Shell::PowerShell,
+            ShellKind::Nushell => Shell::Nushell,
         }
     }
 }

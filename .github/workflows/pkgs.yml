@@ -2,12 +2,13 @@ name: Packages
 
 # Builds and runs the example projects with the real package set on every
 # OS: Rust (offline from Cargo.lock), Node.js (from package-lock.json),
-# Python (with a pinned wheel) and a plain-commands project. It downloads
+# Python (with pinned wheels) and a plain-commands project, and loads a dev
+# shell into Nushell through its activation script. It downloads
 # the toolchains (about 0.5 GB per OS), so it isn't part of `CI result`.
 on:
   pull_request:
     branches: [main]
-    paths: ["pkgs/**", "examples/**", "crates/neki-build/**", "crates/neki-fetch/**", "crates/neki-core/**"]
+    paths: ["pkgs/**", "examples/**", "crates/neki-build/**", "crates/neki-fetch/**", "crates/neki-core/**", "crates/neki-platform/**", "crates/neki-profile/**"]
   schedule:
     - cron: "0 3 * * 1" # Mondays
   workflow_dispatch:
@@ -72,6 +73,15 @@ jobs:
             examples/python-tool/result/bin/python-tool
             examples/rust-hello/result/bin/rust-hello
           fi
+
+      - name: Load a dev shell into Nushell
+        run: |
+          neki=target/release/neki
+          nu="$("$neki" build --file pkgs/default.neki -A nushell | tail -1)/nu"
+          if command -v cygpath > /dev/null; then nu="$(cygpath -u "$nu")"; fi
+          "$neki" -C examples/node-app develop --print-env nushell > env.nu
+          cat env.nu
+          "$nu" --no-config-file -c 'source env.nu; print $"($env.NEKI_SHELL): node (^node --version)"'
 
       # Deleting the outputs and building again must give the same bytes.
       # The dev shells keep the toolchains (GC roots), so only the projects

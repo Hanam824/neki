@@ -230,4 +230,19 @@ fn activation_scripts() {
         ps.contains("$env:PATH = '/env/bin' + [IO.Path]::PathSeparator + $env:PATH"),
         "{ps}"
     );
+    let nu = render_activation(&env, Shell::Nushell);
+    assert!(nu.contains("$env.GREETING = r#'it's'#\n"), "{nu}");
+    assert!(
+        nu.contains("$env.PATH = ($env.PATH | split row (char esep) | prepend [r#'/env/bin'#])"),
+        "{nu}"
+    );
+    assert!(nu.ends_with("echo ready\n"));
+    let tricky = ShellEnv {
+        vars: [("X".to_string(), "a'#b".to_string())].into(),
+        ..ShellEnv::default()
+    };
+    assert_eq!(
+        render_activation(&tricky, Shell::Nushell),
+        "$env.X = r##'a'#b'##\n"
+    );
 }

@@ -84,6 +84,7 @@ GITHUB = {
     "dust": ("bootandy/dust", rust_triples(linux="musl", arm_linux="musl")),
     "sd": ("chmln/sd", rust_triples(linux="musl", arm_linux="musl")),
     "xh": ("ducaale/xh", rust_triples(linux="musl", arm_linux="musl")),
+    "nushell": ("nushell/nushell", rust_triples(prefix=r"nu-[0-9.]+-", linux="musl", arm_linux="musl")),
     "deno": ("denoland/deno", {
         "aarch64-darwin": r"^deno-aarch64-apple-darwin\.zip$",
         "x86_64-darwin": r"^deno-x86_64-apple-darwin\.zip$",

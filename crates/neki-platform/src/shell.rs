@@ -9,12 +9,19 @@ pub enum Shell {
     Posix,
     /// PowerShell (Windows PowerShell or cross-platform `pwsh`).
     PowerShell,
+    /// Nushell (`nu`), which runs on every OS.
+    Nushell,
 }
 
 impl Shell {
-    /// The shell to launch: `$SHELL` on Unix, PowerShell on Windows.
+    /// The shell to launch: Nushell if `$SHELL` names `nu` (on any OS),
+    /// otherwise `$SHELL` on Unix and PowerShell on Windows.
     pub fn detect() -> (Shell, PathBuf) {
-        if cfg!(windows) {
+        if let Some(path) = std::env::var_os("SHELL").map(PathBuf::from)
+            && path.file_stem().is_some_and(|stem| stem == "nu")
+        {
+            (Shell::Nushell, path)
+        } else if cfg!(windows) {
             (Shell::PowerShell, PathBuf::from("powershell.exe"))
         } else {
             let path = std::env::var_os("SHELL").map_or_else(|| "/bin/sh".into(), PathBuf::from);
