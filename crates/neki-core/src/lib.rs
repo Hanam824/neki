@@ -881,9 +881,9 @@ impl Neki {
         Ok(SecretKey::parse(&text)?)
     }
 
-    /// Upload the closures of `paths` to the `file://` cache at `url`,
-    /// signed with the key in `key_file` (or `secret-key-file`). Returns the
-    /// paths uploaded.
+    /// Upload the closures of `paths` to the cache at `url` (`file://`, or
+    /// an HTTP `neki store serve --allow-push`), signed with the key in
+    /// `key_file` (or `secret-key-file`). Returns the paths uploaded.
     pub fn cache_push(
         &self,
         url: &str,
@@ -926,21 +926,38 @@ impl Neki {
     }
 
     /// Serve the store as a binary cache at `addr` until the process ends,
-    /// signing with the key in `key_file` if given. `ready` gets the bound
-    /// address.
+    /// signing with the key in `key_file` if given. With `allow_push`,
+    /// uploads signed by one of the `trusted-public-keys` are added to the
+    /// store. `ready` gets the bound address.
     pub fn serve(
         &self,
         addr: &str,
         key_file: Option<&Path>,
+        allow_push: bool,
         ready: impl FnOnce(SocketAddr),
     ) -> Result<()> {
         let key = key_file.map(|f| self.secret_key(Some(f))).transpose()?;
+        let trusted = self
+            .config
+            .trusted_public_keys
+            .iter()
+            .map(|k| PublicKey::parse(k))
+            .collect::<Result<Vec<_>, _>>()?;
+        if allow_push && trusted.is_empty() {
+            return Err(Error::Input(
+                "--allow-push needs trusted-public-keys in config.toml: only uploads signed by those keys are accepted".into(),
+            ));
+        }
         let store = self.store()?;
         let server = neki_substitute::CacheServer::bind(addr)?;
         if let Some(a) = server.addr() {
             ready(a);
         }
-        server.run(&store, key.as_ref());
+        server.run(
+            &store,
+            key.as_ref(),
+            allow_push.then_some(trusted.as_slice()),
+        );
         Ok(())
     }
 }

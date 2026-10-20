@@ -210,6 +210,10 @@ enum StoreCommand {
         /// Sign paths with this secret key.
         #[arg(long)]
         key_file: Option<PathBuf>,
+        /// Accept uploads (`neki cache push http://…`) signed by one of the
+        /// trusted-public-keys in config.toml.
+        #[arg(long)]
+        allow_push: bool,
     },
 }
 
@@ -223,7 +227,8 @@ enum HashCommand {
 
 #[derive(Debug, Subcommand)]
 enum CacheCommand {
-    /// Upload store paths and their closures to a file:// binary cache.
+    /// Upload store paths and their closures to a binary cache: a file://
+    /// directory, or a `neki store serve --allow-push` over HTTP.
     Push {
         url: String,
         #[arg(required = true)]
@@ -712,8 +717,12 @@ fn store(
                 json!({ "bytesSaved": saved }),
             )
         }
-        StoreCommand::Serve { listen, key_file } => {
-            neki.serve(&listen, key_file.as_deref(), |addr| {
+        StoreCommand::Serve {
+            listen,
+            key_file,
+            allow_push,
+        } => {
+            neki.serve(&listen, key_file.as_deref(), allow_push, |addr| {
                 eprintln!(
                     "serving {} at http://{addr}",
                     neki.config().store_dir.display()

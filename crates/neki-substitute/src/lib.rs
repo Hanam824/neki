@@ -48,10 +48,8 @@ pub enum Error {
         theirs: String,
         ours: String,
     },
-    #[error(
-        "can only upload to file:// caches (serve one over HTTP with `neki store serve`), not {0}"
-    )]
-    ReadOnly(String),
+    #[error("upload rejected: {0}")]
+    Rejected(String),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -232,17 +230,28 @@ impl BinaryCache {
     }
 
     /// Upload the closures of `paths`, signed with `key`, skipping paths the
-    /// cache already has. Only `file://` caches can be written. Returns the
-    /// paths uploaded.
+    /// cache already has. A `file://` cache is written directly; an HTTP
+    /// cache must be a `neki store serve --allow-push` that trusts `key`.
+    /// Returns the paths uploaded.
     pub fn push(
         &self,
         store: &LocalStore,
         paths: &[StorePath],
         key: &SecretKey,
     ) -> Result<Vec<StorePath>> {
-        let dir = self
-            .dir()
-            .ok_or_else(|| Error::ReadOnly(self.url.clone()))?;
+        match self.dir() {
+            Some(dir) => self.push_to_dir(store, &dir, paths, key),
+            None => self.push_over_http(store, paths, key),
+        }
+    }
+
+    fn push_to_dir(
+        &self,
+        store: &LocalStore,
+        dir: &Path,
+        paths: &[StorePath],
+        key: &SecretKey,
+    ) -> Result<Vec<StorePath>> {
         let nar_dir = dir.join("nar");
         fs::create_dir_all(&nar_dir).map_err(at(&nar_dir))?;
         let info_file = dir.join("nix-cache-info");
@@ -265,41 +274,128 @@ impl BinaryCache {
             if narinfo_file.exists() {
                 continue;
             }
-            let info = store
-                .query_path_info(&path)?
-                .ok_or_else(|| neki_store::Error::NotValid(path.to_string()))?;
-            // Compress into a temporary file, hashing the compressed bytes.
             let tmp = nar_dir.join(format!(".tmp-{}", path.hash_part()));
-            let file = fs::File::create(&tmp).map_err(at(&tmp))?;
-            let mut hashing = HashingWriter {
-                inner: io::BufWriter::new(file),
-                hasher: Hasher::new(HashAlgo::Sha256),
-            };
-            {
-                let mut encoder =
-                    zstd::stream::write::Encoder::new(&mut hashing, 3).map_err(at(&tmp))?;
-                neki_nar::dump(&store_dir.to_path(&path), &mut encoder)?;
-                encoder.finish().map_err(at(&tmp))?;
-            }
-            hashing.inner.flush().map_err(at(&tmp))?;
-            let file_size = hashing.hasher.bytes_hashed();
-            let file_hash = hashing.hasher.finish();
-            let url = format!("nar/{}.nar.zst", file_hash.to_base32());
-            let dest = dir.join(&url);
+            let narinfo = compressed_nar(store, &path, &tmp, key)?;
+            let dest = dir.join(&narinfo.url);
             fs::rename(&tmp, &dest).map_err(at(&dest))?;
-            let mut narinfo = NarInfo {
-                info,
-                url,
-                compression: "zstd".into(),
-                file_hash: Some(file_hash),
-                file_size: Some(file_size),
-            };
-            narinfo.info.signatures = vec![key.sign(&fingerprint(store_dir, &narinfo.info))];
             write_atomic(&narinfo_file, narinfo.to_text(store_dir).as_bytes())?;
             uploaded.push(path);
         }
         Ok(uploaded)
     }
+
+    fn push_over_http(
+        &self,
+        store: &LocalStore,
+        paths: &[StorePath],
+        key: &SecretKey,
+    ) -> Result<Vec<StorePath>> {
+        self.check_store_dir(store.store_dir())?;
+        let tmp_dir = store.state_dir().join("tmp");
+        fs::create_dir_all(&tmp_dir).map_err(at(&tmp_dir))?;
+        let mut uploaded = Vec::new();
+        // References first: the server only accepts a path whose references
+        // it already has.
+        for path in references_first(store, paths)? {
+            if self.query(store.store_dir(), &path)?.is_some() {
+                continue;
+            }
+            let tmp = tmp_dir.join(format!("upload-{}", path.hash_part()));
+            let narinfo = compressed_nar(store, &path, &tmp, key)?;
+            let file = fs::File::open(&tmp).map_err(at(&tmp))?;
+            let sent = self
+                .put(&format!("nar/{}.nar.zst", path.hash_part()), file)
+                .and_then(|()| {
+                    self.put(
+                        &format!("{}.narinfo", path.hash_part()),
+                        narinfo.to_text(store.store_dir()),
+                    )
+                });
+            let _ = fs::remove_file(&tmp);
+            sent?;
+            uploaded.push(path);
+        }
+        Ok(uploaded)
+    }
+
+    fn put(&self, file: &str, body: impl ureq::AsSendBody) -> Result<()> {
+        let url = format!("{}/{file}", self.url);
+        ureq::put(&url)
+            .header("User-Agent", concat!("neki/", env!("CARGO_PKG_VERSION")))
+            .send(body)
+            .map(|_| ())
+            .map_err(|e| match e {
+                ureq::Error::StatusCode(403) => {
+                    Error::Http(format!("{url}: rejected; does the server trust this key, and was it started with --allow-push?"))
+                }
+                ureq::Error::StatusCode(405) => {
+                    Error::Http(format!("{url}: the server doesn't accept uploads (start it with --allow-push)"))
+                }
+                e => Error::Http(format!("{url}: {e}")),
+            })
+    }
+}
+
+/// Write `path`'s NAR, zstd-compressed, to the new file `dest` and return
+/// its narinfo (URL `nar/<file hash>.nar.zst`) signed with `key`.
+fn compressed_nar(
+    store: &LocalStore,
+    path: &StorePath,
+    dest: &Path,
+    key: &SecretKey,
+) -> Result<NarInfo> {
+    let info = store
+        .query_path_info(path)?
+        .ok_or_else(|| neki_store::Error::NotValid(path.to_string()))?;
+    let file = fs::File::create(dest).map_err(at(dest))?;
+    let mut hashing = HashingWriter {
+        inner: io::BufWriter::new(file),
+        hasher: Hasher::new(HashAlgo::Sha256),
+    };
+    {
+        let mut encoder = zstd::stream::write::Encoder::new(&mut hashing, 3).map_err(at(dest))?;
+        neki_nar::dump(&store.store_dir().to_path(path), &mut encoder)?;
+        encoder.finish().map_err(at(dest))?;
+    }
+    hashing.inner.flush().map_err(at(dest))?;
+    let file_size = hashing.hasher.bytes_hashed();
+    let file_hash = hashing.hasher.finish();
+    let mut narinfo = NarInfo {
+        info,
+        url: format!("nar/{}.nar.zst", file_hash.to_base32()),
+        compression: "zstd".into(),
+        file_hash: Some(file_hash),
+        file_size: Some(file_size),
+    };
+    narinfo.info.signatures = vec![key.sign(&fingerprint(store.store_dir(), &narinfo.info))];
+    Ok(narinfo)
+}
+
+/// The closure of `paths`, every path after the paths it refers to.
+fn references_first(store: &LocalStore, paths: &[StorePath]) -> Result<Vec<StorePath>> {
+    fn visit(
+        store: &LocalStore,
+        path: &StorePath,
+        seen: &mut BTreeSet<StorePath>,
+        out: &mut Vec<StorePath>,
+    ) -> Result<()> {
+        if !seen.insert(path.clone()) {
+            return Ok(());
+        }
+        let info = store
+            .query_path_info(path)?
+            .ok_or_else(|| neki_store::Error::NotValid(path.to_string()))?;
+        for reference in &info.references {
+            visit(store, reference, seen, out)?;
+        }
+        out.push(path.clone());
+        Ok(())
+    }
+    let (mut seen, mut out) = (BTreeSet::new(), Vec::new());
+    for path in paths {
+        visit(store, path, &mut seen, &mut out)?;
+    }
+    Ok(out)
 }
 
 struct HashingWriter<W: Write> {
