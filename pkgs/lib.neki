@@ -164,9 +164,10 @@ rec {
       commands = [ [
         "cargo" "install" "--path" "." "--root" "\${out}" "--locked" "--offline"
         "--config" "source.crates-io.replace-with=\"vendored\""
-        "--config" "source.vendored.directory=\"${vendor}\""
+        # TOML literal strings: Windows paths have backslashes.
+        "--config" "source.vendored.directory='${vendor}'"
         # Keep the build directory's path out of the program.
-        "--config" "build.rustflags=[\"--remap-path-prefix=\${NEKI_BUILD_TOP}=/build\"]"
+        "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build']"
       ] ];
       # Stripping needs LLVM tools that the minimal toolchain doesn't have.
       env = linkerEnv // { CARGO_INCREMENTAL = "0"; CARGO_PROFILE_RELEASE_STRIP = "false"; };
