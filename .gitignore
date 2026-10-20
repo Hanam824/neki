@@ -1,5 +1,11 @@
 /target
-/result
-/result-*
 /dist
 .DS_Store
+# `neki build` links, in any project.
+result
+result-*
+# Cargo's output in the Rust example.
+/examples/*/target
+# The examples' `path:` input is this repository's pkgs/, which changes
+# with every package edit; real projects should commit neki.lock.
+/examples/*/neki.lock

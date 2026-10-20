@@ -7,10 +7,15 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+neki-derivation.workspace = true
 neki-hash.workspace = true
 neki-nar.workspace = true
 neki-platform.workspace = true
+rusqlite.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

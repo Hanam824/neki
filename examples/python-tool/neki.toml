@@ -1,0 +1,13 @@
+[project]
+name = "python-tool"
+description = "A Python program with a pinned wheel"
+
+[inputs]
+pkgs = { url = "path:../../pkgs" }
+
+[dev-shell]
+packages = ["pkgs.python3", "pkgs.uv"]
+
+[packages.default]
+src = "."
+file = "package.neki"

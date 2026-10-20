@@ -5,6 +5,7 @@
 
 mod app;
 mod registry;
+mod views;
 
 slint::include_modules!();
 

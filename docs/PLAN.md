@@ -28,7 +28,7 @@ Rule: one behaviour on every OS. Where the OS mechanism differs but the behaviou
 | P7 | Toolchains | Compilers are normal inputs; no toolchain bundled yet | LLVM-mingw stdenv, MSVC as an impure system input (it can't be redistributed) |
 | P8 | Store immutability | `std` read-only permission on registered files, plus `neki store verify` | Windows deny-write ACL, `chattr +i` |
 | P9 | Store root | Fixed per OS family: `C:\neki\store` (Windows) or `/opt/neki/store` (macOS + Linux; `/opt` needs no synthetic APFS volume on macOS); state in `C:\neki\var` / `/opt/neki/var`; overridable with `NEKI_STORE_DIR` / `NEKI_STATE_DIR` | Relocatable stores |
-| P10 | File names | The NAR unpacker rejects names invalid on **any** supported OS (Windows reserved names/chars, trailing dot/space) so store contents are portable. The exec bit is stored in the NAR and applied only on Unix | Escaping instead of rejection |
+| P10 | File names | The NAR unpacker rejects names invalid on **any** supported OS (Windows reserved names/chars, trailing dot/space) so store contents are portable. Archives are unpacked leaving out entries that differ only by case from an earlier one (logged), e.g. ncurses terminfo in Linux releases. The exec bit is stored in the NAR and applied only on Unix | Escaping instead of rejection |
 | P11 | Daemon / multi-user | Single-user, in-process | Daemon (Unix socket / named pipe), multi-user |
 | P12 | Shells | `neki develop`/`neki shell` spawn a child shell with the env applied (`$SHELL` on Unix, PowerShell on Windows). Activation scripts for POSIX sh and PowerShell (pwsh runs on all 3 OSes) | cmd, fish and Nushell scripts, direnv-style auto-activation |
 | P13 | Reference scanning | Scan outputs for hashes in UTF-8 **and** UTF-16LE on every OS | — |
@@ -103,13 +103,13 @@ Nix-design/
 └─ tests/                     # integration fixtures (golden NAR/drv/hash vectors)
 ```
 
-**Platform abstraction:** all OS-specific code is in `neki-platform`, behind functions with identical behaviour on every OS (`link_dir`: symlink vs junction; `spawn_group`/`kill_tree`: process group vs Job Object).
+**Platform abstraction:** all OS-specific code is in `neki-platform`, behind functions with identical behaviour on every OS: `link_dir` (symlink vs junction), `spawn_tree`/`ProcessTree::kill` (process group vs Job Object), `file_id` (inode vs file index), `is_program` (executable bit vs `.exe`/`.cmd`), `exec_replace` (exec vs run-and-exit), `shell::open_terminal` (Terminal, an X terminal, or a PowerShell console).
 
-**Skeleton conventions:** every crate has `Error` (`thiserror`) + `Result`; unimplemented bodies are `todo!("M<n>: …")` (`grep -rn 'todo!' crates/` = remaining work); `neki-core` ops return `Error::NotImplemented("M<n>")` instead of calling stubs, so the CLI never panics. APIs are sync; builds use threads.
+**Conventions:** every crate has `Error` (`thiserror`) + `Result`. APIs are sync; builds use threads, evaluation runs on one thread with a big stack. The skeleton's stubs (`todo!`, `NotImplemented`) are all gone.
 
-**Key crates (added with their milestone):** `sha2`, `data-encoding`, `rusqlite` (bundled), `reqwest` (rustls), `gix`, `zip`, `tar`, `xz2`/`zstd`, `ed25519-dalek`, `rnix-parser`, `windows` (junctions/Job Objects inside `neki-platform`), `fs4` (locking), and `slint` (Phase 2). Already used: `thiserror`, `serde`, `serde_json`, `toml`, `clap`, `anyhow`, `dirs`.
+**Crates used:** `sha2`, `data-encoding`, `rusqlite` (bundled SQLite), `ureq` (rustls), `zip`, `tar`, `flate2`, `lzma-rs`, `zstd`, `ed25519-dalek`, `getrandom`, `tiny_http`, `regex`, `process-wrap` (process groups/Job Objects), `junction` and `windows-sys` (inside `neki-platform`), `rfd` (folder picker) and `slint` (Phase 2), plus `thiserror`, `serde`, `serde_json`, `toml`, `clap`, `anyhow`, `dirs`. Changed from the first plan: the expression parser is Neki's own (better error positions than `rnix-parser`), git sources use the `git` program instead of `gix`, file locking uses `std` (Rust 1.89) instead of `fs4`, and HTTP uses `ureq` instead of `reqwest`.
 
-**Format stability:** Neki's own golden vectors (`tests/fixtures/`) define NAR bytes, hashes, `.drv` text and narinfo; changing them is a breaking change.
+**Format stability:** Neki's own golden vectors (in the crates' tests: base32, store paths, NAR bytes, `.drv` text and paths) define the formats; changing them is a breaking change.
 
 ---
 
@@ -120,14 +120,14 @@ Nix-design/
 | **M0** | Workspace scaffold, CI (GitHub Actions: windows/macos/ubuntu), `CLAUDE.md`, lint (`clippy -D warnings`, `fmt`) | `cargo test --workspace` green on all 3 OSes |
 | **M0.5** | Cross-platform skeleton: all crate APIs, `neki-platform`, the full CLI, `neki.toml`/`neki.lock` parsing, `neki info` | Builds clippy-clean; `neki info` shows config + project; other commands fail with "planned for M<n>" ✅ |
 | **M1** | `neki-hash` + `neki-nar` | NAR + base32 + store path match committed golden vectors; `neki hash path/file` ✅ (base32 matches Nix's own vectors; hashes, NAR bytes and store paths cross-checked against openssl and an independent Python implementation) |
-| **M2** | `neki-store` (local store, DB, `add-to-store`, refs, read-only, locks) | `neki store add <dir>` → `C:\neki\store\<hash>-name`, re-adding is idempotent, `path-info`/`verify` work |
-| **M3** | `neki-derivation` + `neki-build` (executor, process-tree kill, scheduler, logs) + `neki-fetch` (fetchurl/zip) | Hand-written `.drv` builds; a fixed-output fetch verifies the hash; deps build in DAG order, in parallel |
-| **M4** | `neki-eval` v1 (core language + `derivation` + fetch builtins) and `neki.toml` front end | `neki build` from a `.neki` expression produces a deterministic `.drv` path (golden-tested) |
-| **M5** | Input resolution + lock file writing + `develop`/`shell`/`run` + POSIX/PowerShell activation + shims | In a sample project, `neki develop` gives a shell with pinned tools (e.g. Node, Python, Go from prebuilt-archive recipes) on all 3 OSes |
-| **M6** | `neki-profile` (profiles, generations, rollback) + GC (roots, `--delete-older-than`) + optimise | Install → upgrade → rollback works; GC removes only unreachable paths |
-| **M7** | `neki-substitute` (file/http cache, signing, `copy`, `store serve`) | Machine A builds and pushes, machine B substitutes with a verified signature |
-| **M8** | `pkgs/` starter set (~50 packages: prebuilt-archive recipes per OS + Cargo/npm/pip adapters) | Example projects for Rust, Node and Python build reproducibly on all 3 OSes |
-| **M9** | `neki-core` facade with an event stream (progress, logs) + JSON output for every CLI command | The GUI can drive every operation through the API, without the CLI |
+| **M2** | `neki-store` (local store, DB, `add-to-store`, refs, read-only, locks) | `neki store add <dir>` → `C:\neki\store\<hash>-name`, re-adding is idempotent, `path-info`/`verify` work ✅ (SQLite DB in `<state>/db/db.sqlite`; adds stream the NAR into a temporary entry, then rename, make read-only and register under `<state>/store.lock`; reference scanner for UTF-8 and UTF-16LE ready for M3; `link_dir` uses junctions on Windows) |
+| **M3** | `neki-derivation` + `neki-build` (executor, process-tree kill, scheduler, logs) + `neki-fetch` (fetchurl/zip) | Hand-written `.drv` builds; a fixed-output fetch verifies the hash; deps build in DAG order, in parallel ✅ (ATerm golden vector cross-checked in Python; builtins `run`, `fetchurl`, `unpack`, `assemble`; scrubbed environment; cancel kills the process tree; zip/tar/tar.gz/tar.xz unpacking rejects path traversal and non-portable names; `neki build --drv`) |
+| **M4** | `neki-eval` v1 (core language + `derivation` + fetch builtins) and `neki.toml` front end | `neki build` from a `.neki` expression produces a deterministic `.drv` path (golden-tested) ✅ (own parser; lazy evaluation, `with`/`rec`/`inherit`, patterns, string context, ~75 builtins incl. `fromTOML`; golden `.drv` path cross-checked in Python; `neki build --file`, `neki eval`) |
+| **M5** | Input resolution + lock file writing + `develop`/`shell`/`run` + POSIX/PowerShell activation + shims | In a sample project, `neki develop` gives a shell with pinned tools (e.g. Node, Python, Go from prebuilt-archive recipes) on all 3 OSes ✅ on macOS (inputs `github:`, `git+`, `path:`, archive URLs with `?dir=`; `neki.lock` written on first use; shims via `neki-shim`; `--print-env posix\|powershell`); Windows and Linux are covered by `.github/workflows/pkgs.yml`, not yet run |
+| **M6** | `neki-profile` (profiles, generations, rollback) + GC (roots, `--delete-older-than`) + optimise | Install → upgrade → rollback works; GC removes only unreachable paths ✅ (roots in the DB, indirect roots for `result` links, builds hold a shared GC lock; optimise hard-links identical files via `.links`) |
+| **M7** | `neki-substitute` (file/http cache, signing, `copy`, `store serve`) | Machine A builds and pushes, machine B substitutes with a verified signature ✅ (narinfo + ed25519 in Nix's formats; `neki cache push/fetch/keygen`, `neki store serve`; builds try substituters first; tested with two stores sharing a store dir, over `file://` and HTTP) |
+| **M8** | `pkgs/` starter set (~50 packages: prebuilt-archive recipes per OS + Cargo/npm/pip adapters) | Example projects for Rust, Node and Python build reproducibly on all 3 OSes ✅ on macOS: 42 packages for 5 systems, every hash from upstream's published checksums (`scripts/update-pkgs.py`); adapters `buildRustPackage` (Cargo.lock, zig as linker), `buildNpmPackage` (package-lock.json), `buildPythonApplication` (wheels); the examples rebuild bit-for-bit after deleting their outputs. Windows and Linux: `pkgs.yml`, not yet run |
+| **M9** | `neki-core` facade with an event stream (progress, logs) + JSON output for every CLI command | The GUI can drive every operation through the API, without the CLI ✅ (`--json` on every command, `--log-format json` event stream; the desktop app uses only `neki-core`) |
 
 ## Part E: Phase 2, the desktop app (Rust + Slint)
 
@@ -147,11 +147,13 @@ Nix-design/
 | D | Deliverable | Status |
 |---|---|---|
 | **D1** | Skeleton app: sidebar (Projects, Store, Profiles, Settings), activity log, project registry (add existing / create new / remove), detail view (lock status, inputs, packages, dev shell), `neki.toml` editor that validates before saving, Build / Update lock / store / profile actions wired to `neki-core` | ✅ (actions show "planned for M<n>" until the backend milestones land) |
-| **D2** | Native folder picker (e.g. `rfd`), unsaved-changes prompt when switching projects | |
-| **D3** | Builds page: live queue, per-derivation logs, cancel (needs M3) | |
-| **D4** | Store browser: path search, closure size, references graph, `why-depends` (needs M2) | |
-| **D5** | Generations list and diff, GC preview (needs M6) | |
-| **D6** | "Open dev shell" in a terminal window (needs M5; launching a terminal is OS-specific, so it goes through `neki-platform`) | |
+| **D2** | Native folder picker (e.g. `rfd`), unsaved-changes prompt when switching projects | ✅ |
+| **D3** | Builds page: live queue, per-derivation logs, cancel (needs M3) | ✅ |
+| **D4** | Store browser: path search, closure size, references graph, `why-depends` (needs M2) | ✅ (the references graph is a dependency tree) |
+| **D5** | Generations list and diff, GC preview (needs M6) | ✅ (also install/remove/switch) |
+| **D6** | "Open dev shell" in a terminal window (needs M5; launching a terminal is OS-specific, so it goes through `neki-platform`) | ✅ |
+
+Of the extras above, the project list shows each project's build state ("not built", "built", "changed since the last build"), re-checked every few seconds. Not done (see Future): the tray icon, a syntax-highlighted / structured `neki.toml` editor, a graphical DAG view and retrying builds, and `repair`.
 
 ---
 
@@ -163,7 +165,13 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 - Scoop / winget / Homebrew manifest importers (P2)
 - DLL hardlinking (Windows), RPATH patching (Unix) (P4)
 - Windows symlinks via Developer Mode (P5). Until then, unpacking a NAR that contains a symlink fails on Windows with a clear error
-- Executable bit on Windows (P10): Windows has no such bit, so NARs made there mark nothing executable, and a tree with executables hashes differently than on Unix. Fix: carry the bit from archive metadata (tar/zip) straight into the NAR in M3's unpacker
+- Executable bit on Windows (P10): Windows has no such bit, so NARs made there mark nothing executable, and a tree with executables hashes differently than on Unix. Fix: carry the bit from archive metadata (tar/zip) straight into the NAR in the unpacker. (Packages are per-system anyway, so this only matters for sources shared between OSes)
+- Tray icon with build notifications: needs `libappindicator`/StatusNotifier on Linux, which isn't available everywhere
+- Syntax-highlighted or form-based `neki.toml` editor, a graphical build DAG, retrying a failed build from the Builds page: Slint has no code editor widget; the rest is UI work for later
+- `neki store repair` (re-fetch or rebuild modified paths in place)
+- Uploading to HTTP caches (only `file://` caches are written; serve one with `neki store serve`)
+- Ad-hoc `neki shell` environments have no GC root, so a garbage collection while the shell is open can delete them
+- Language adapters: npm packages with install scripts, optional/platform-specific npm dependencies, Python dependencies with native code (sdists), and Cargo `git` dependencies aren't supported
 - MSI/EXE installers, registry, services, drivers (P6)
 - LLVM-mingw stdenv, MSVC as an impure input (P7)
 - ACL / `chattr` hard immutability (P8)
@@ -178,9 +186,9 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 
 ## Verification
 
-- **Golden-vector tests** (per crate): fixtures committed under `tests/fixtures`; `cargo test -p neki-nar` etc.
-- **Integration tests:** a temporary store root per test (`NEKI_STORE_DIR` override) for the cycles build → GC → rebuild and push → substitute.
-- **CI matrix:** windows-latest, macos-latest, ubuntu-latest. Windows jobs run the junction and Job Object paths in `neki-platform`.
-- **End-to-end:** the example projects in `examples/` (rust-hello, node-app, python-tool) must `neki build` with identical output hashes on two clean machines.
-- **Phase 2:** Slint UI smoke tests (`slint::testing`), plus a manual run of `cargo run -p neki-gui` against the example projects.
+- **Golden-vector tests** (per crate, in the crates' tests): Nix base32, store paths, NAR bytes, `.drv` text and the `.drv` path of a `.neki` expression, each cross-checked against an independent implementation (openssl, Python).
+- **Integration tests** (`neki-core`): a temporary store per test for build → GC → rebuild, the lock file, environments, profiles, and push → substitute between two stores sharing a store dir.
+- **CI matrix** (`ci.yml`): windows-latest, macos-latest, ubuntu-latest run every test, including the junction, Job Object and `cmd.exe` paths on Windows.
+- **End-to-end** (`pkgs.yml`): the example projects build with the real package set, run, and rebuild to the same NAR hashes after their outputs are deleted, on each OS. Done by hand on macOS (Intel); the workflow hasn't run yet. Two different machines of the same OS haven't been compared yet.
+- **Phase 2:** a headless smoke test of the real window (`i-slint-backend-testing`), plus a manual run of `neki-desktop` against the example projects (every page, on macOS).
 

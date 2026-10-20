@@ -1,0 +1,14 @@
+[project]
+name = "node-app"
+description = "A Node.js program installed from package-lock.json"
+
+[inputs]
+pkgs = { url = "path:../../pkgs" }
+
+[dev-shell]
+packages = ["pkgs.nodejs"]
+
+[packages.default]
+src = "."
+file = "package.neki"
+exclude = ["node_modules"]

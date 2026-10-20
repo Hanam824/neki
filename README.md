@@ -4,19 +4,21 @@ Neki is a declarative, reproducible package manager, written in Rust, that runs 
 
 It follows [Nix](https://nixos.org/guides/how-nix-works/)'s design: packages live in an immutable, content-addressed store; builds are described as derivations; and each project declares its tools and dependencies in one file, pinned by a lock file. Nix itself only runs on Linux and macOS, so Neki rebuilds that architecture in Rust, choosing solutions that behave the same on all three operating systems. Neki is a separate tool. It isn't compatible with Nix, nixpkgs or Nix binary caches.
 
-> **Status: early development.** The architecture and the command line are in place, but most operations aren't implemented yet. Commands that aren't ready say which milestone will implement them, for example `error: not implemented yet (planned for M3)`. See [`docs/PLAN.md`](docs/PLAN.md) for the roadmap.
+> **Status: early.** Every milestone of the [plan](docs/PLAN.md) is implemented and tested, and the example projects build and run on macOS. The Windows and Linux runs of the package set (`.github/workflows/pkgs.yml`) haven't happened yet, so expect rough edges there. Things that can't work the same on every OS yet are listed under [Future](docs/PLAN.md#future-not-cross-platform-yet).
 
-## What works today
+## What it does
 
-- `neki init`: create a project with a starter `neki.toml`
-- `neki info`: show the configuration and the current project's declaration (`--json` for machine-readable output)
-- `neki hash path <path>` and `neki hash file <file>`: SHA-256 of a file tree (as a NAR archive) or of a file's contents, printed in SRI form (`sha256-…`)
-- Parsing and validating `neki.toml` and `neki.lock`
-- **Neki Desktop App**: register projects, view and edit their `neki.toml` (validated before saving), and browse settings
+- **Per-project environments.** A project's `neki.toml` names the tools it needs; `neki develop` opens a shell with exactly those versions, and `neki.lock` pins them.
+- **Reproducible builds.** Builds run with a scrubbed environment, only declared inputs on `PATH`, and every download checked against a hash. Building again gives the same bytes.
+- **A package set** of 42 prebuilt tools (Node.js, Python, Go, Rust, Zig, Java, Deno, Bun, ripgrep, jq, gh, kubectl, Terraform, …) for macOS, Linux and Windows, every hash taken from upstream's published checksums.
+- **Language adapters** that build Cargo, npm and Python projects offline from their lock files.
+- **Profiles** with generations and rollback, for tools you want everywhere.
+- **Binary caches**: sign and push builds, serve a store over HTTP, and download instead of building.
+- **Neki Desktop App** to manage projects, watch builds, browse the store and manage profiles.
 
 ## Build from source
 
-You need a stable [Rust toolchain](https://rustup.rs/). On Linux, the desktop app also needs `libfontconfig1-dev` and `libxkbcommon-dev` (Debian/Ubuntu package names).
+You need a stable [Rust toolchain](https://rustup.rs/) (1.89 or newer). On Linux, the desktop app also needs `libfontconfig1-dev` and `libxkbcommon-dev` (Debian/Ubuntu package names).
 
 ```sh
 git clone https://github.com/Hanam824/neki.git
@@ -30,62 +32,7 @@ This builds three programs in `target/release/`:
 |---|---|
 | `neki` | The command-line interface |
 | `neki-desktop` | Neki Desktop App |
-| `neki-shim` | A small launcher Neki puts in front of installed programs (used once environments are implemented) |
-
-To put `neki` on your `PATH`, run `cargo install --path crates/neki-cli`.
-
-## Quick start
-
-```sh
-neki init -C my-app        # creates my-app/neki.toml
-neki info -C my-app        # shows the store location, your system and the project
-cargo run -p neki-gui      # opens Neki Desktop App
-```
-
-Without `-C`, `neki` looks for a `neki.toml` in the current folder and its parents.
-
-## Declaring a project
-
-Each project has a `neki.toml` (see [`examples/hello`](examples/hello/neki.toml)):
-
-```toml
-[project]
-name = "hello"
-description = "Example Neki project"
-
-[inputs]
-pkgs = { url = "github:neki-pkgs/pkgs" }   # package source, pinned in neki.lock
-
-[dev-shell]
-packages = ["pkgs.rustc", "pkgs.cargo"]
-env = { RUST_LOG = "info" }
-
-[packages.default]
-src = "."
-build-inputs = ["pkgs.rustc", "pkgs.cargo"]
-build = [["cargo", "install", "--path", ".", "--root", "${out}"]]
-```
-
-- `inputs` are the sources the project uses. `neki lock` pins each to an exact revision and hash in `neki.lock`.
-- `dev-shell` is the environment `neki develop` opens.
-- `packages` are what `neki build` produces. Build steps are argument lists run without a shell, so they behave the same on every OS; `${out}` is the output folder in the store.
-
-There's no Neki package set yet, so the `pkgs` input above is a placeholder.
-
-## Commands
-
-| Command | Purpose | Status |
-|---|---|---|
-| `neki init` | Create a project | ✅ |
-| `neki info [--json]` | Show configuration and project | ✅ |
-| `neki hash path\|file` | Hash files and folders | ✅ |
-| `neki store add\|path-info\|verify` | Use the store directly | M2 |
-| `neki build [package]` | Build a package | M3 |
-| `neki develop`, `neki shell`, `neki run`, `neki lock` | Environments and lock files | M5 |
-| `neki profile install\|remove\|rollback\|history`, `neki store gc\|optimise` | Profiles and garbage collection | M6 |
-| `neki cache push` | Upload to a binary cache | M7 |
-
-Run `neki --help` or `neki <command> --help` for details.
+| `neki-shim` | The launcher Neki puts in environments for each program; keep it next to `neki` |
 
 ## Where Neki keeps things
 
@@ -94,7 +41,97 @@ Run `neki --help` or `neki <command> --help` for details.
 | Store | `C:\neki\store` | `/opt/neki/store` |
 | State (database, profiles, logs) | `C:\neki\var` | `/opt/neki/var` |
 
-The store location is fixed so that store paths are identical on every machine. To use a different store, for example in tests, set `NEKI_STORE_DIR` and `NEKI_STATE_DIR`.
+The store location is fixed so that store paths are identical on every machine. On macOS and Linux, `/opt` belongs to root, so create the folder once and give it to your user:
+
+```sh
+sudo mkdir -p /opt/neki && sudo chown "$USER" /opt/neki
+```
+
+To use a different store, for example in tests, set `NEKI_STORE_DIR` and `NEKI_STATE_DIR`. Store paths then differ from those on other machines, because the store location is part of every path's hash.
+
+## Quick start
+
+```sh
+neki init -C my-app            # creates my-app/neki.toml
+cd my-app
+neki develop                   # a shell with the dev-shell packages
+neki build                     # builds the default package; ./result points at it
+neki run -- --help             # builds and runs it
+```
+
+Try the examples in this repository, which use the package set in `pkgs/`:
+
+```sh
+neki -C examples/node-app build && examples/node-app/result/bin/node-app
+neki -C examples/python-tool build && examples/python-tool/result/bin/python-tool
+neki -C examples/rust-hello build && examples/rust-hello/result/bin/rust-hello
+```
+
+## Declaring a project
+
+Each project has a `neki.toml` (see [`examples/hello`](examples/hello/neki.toml)):
+
+```toml
+[project]
+name = "hello"
+
+[inputs]
+pkgs = { url = "github:Hanam824/neki?dir=pkgs" }   # pinned in neki.lock
+
+[dev-shell]
+packages = ["pkgs.jq", "pkgs.ripgrep", "pkgs.python"]
+env = { GREETING = "hello" }
+shell-hook = "echo ready"
+
+[packages.default]
+src = "."
+build-inputs = ["pkgs.python"]
+build = [["python", "build.py", "${out}"]]
+```
+
+- `inputs` are package sources: `github:<owner>/<repo>[/<ref>]`, `git+<url>`, `path:<dir>` or an archive URL, each optionally with `?dir=<subdir>`. The first time an input is used, it's pinned in `neki.lock`; `neki lock --update <name>` moves it to the newest version.
+- `dev-shell` is the environment `neki develop` opens (`neki develop --print-env posix` or `powershell` prints a script to load it into the current shell instead).
+- `packages` are what `neki build` produces. Build steps are argument lists run without a shell, so they behave the same on every OS; `${out}` is the output folder in the store, and `${NAME}` any other build variable. A package can instead name a `.neki` file (`file = "package.neki"`) to use the language adapters, as the examples do.
+
+Packages are named `<input>.<package>`. Outside a project, `neki shell pkgs.jq` and profiles use the registry in your settings, where `pkgs` is this repository's package set.
+
+## Commands
+
+Every command accepts `--json` (the result as JSON) and `--log-format json` (progress as JSON lines on stderr).
+
+| Command | Purpose |
+|---|---|
+| `neki init`, `neki info` | Create a project; show the configuration and project |
+| `neki build [package]` | Build a package (`--file x.neki -A attr` for an expression, `--drv` for derivations) |
+| `neki run [package] -- args` | Build and run a package's program |
+| `neki develop`, `neki shell <pkgs…>` | Open a shell with a project's or the given packages |
+| `neki lock [--update input]` | Pin the project's inputs in `neki.lock` |
+| `neki eval <expr>` | Evaluate an expression |
+| `neki profile install\|remove\|upgrade\|rollback\|switch\|history\|list` | Manage profiles (add `<state>/profiles/default/current/bin` to `PATH`) |
+| `neki store add\|path-info\|ls\|closure\|why-depends\|roots\|verify\|gc\|optimise` | Inspect and maintain the store (`gc --dry-run`, `--delete-older-than 30d`) |
+| `neki store serve` | Serve the store as a binary cache over HTTP |
+| `neki cache keygen\|push\|fetch` | Sign and upload to a `file://` cache, or download from any cache |
+| `neki hash path\|file` | Hash a file tree (as a NAR) or a file's contents |
+
+Run `neki --help` or `neki <command> --help` for details.
+
+## Settings
+
+Optional, in `config.toml` in your config folder (`~/.config/neki` on Linux, `~/Library/Application Support/neki` on macOS, `%APPDATA%\neki` on Windows):
+
+```toml
+substituters = ["https://cache.example.org"]
+trusted-public-keys = ["cache.example.org-1:…"]   # from `neki cache keygen`
+secret-key-file = "/path/to/secret-key"            # for `neki cache push`
+max-jobs = 4
+
+[registry]
+pkgs = "github:Hanam824/neki?dir=pkgs"
+```
+
+## The package set
+
+`pkgs/default.neki` holds the packages; `pkgs/sources.json` their versions, URLs and SHA-256 hashes for `aarch64-darwin`, `x86_64-darwin`, `x86_64-linux`, `aarch64-linux` and `x86_64-windows`. To update it, run `scripts/update-pkgs.py` (it uses `gh` if installed). `pkgs/lib.neki` has the helpers and adapters: `buildRustPackage` (from `Cargo.lock`), `buildNpmPackage` (from `package-lock.json`) and `buildPythonApplication` (from wheels).
 
 ## Downloads
 
@@ -107,21 +144,22 @@ crates/
   neki-platform     the only OS-specific code (paths, links, processes, shells)
   neki-hash         hashes and store paths
   neki-nar          archive format for store contents
-  neki-derivation   build recipes
-  neki-store        the content-addressed store
-  neki-fetch        downloading sources
+  neki-derivation   build recipes (.drv)
+  neki-store        the store: database, GC, optimise
+  neki-fetch        downloading and unpacking sources
   neki-build        running builds
   neki-substitute   binary caches
-  neki-eval         expression language evaluator
+  neki-eval         the expression language
   neki-project      neki.toml and neki.lock
-  neki-profile      profiles and shell environments
+  neki-profile      profiles and environments
+  neki-shim         launcher for installed programs
   neki-core         the API shared by the CLI and the desktop app
   neki-cli          the `neki` command
   neki-gui          Neki Desktop App (Slint)
-  neki-shim         launcher for installed programs
-docs/PLAN.md        design, cross-platform decisions and roadmap
+pkgs/               the package set
 examples/           sample projects
-scripts/            release and CI helpers
+docs/PLAN.md        design, cross-platform decisions and roadmap
+scripts/            release, CI and package-set helpers
 ```
 
 ## Contributing

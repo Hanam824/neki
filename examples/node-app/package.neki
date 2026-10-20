@@ -1,0 +1,8 @@
+# Built from package-lock.json: each package is downloaded by its locked
+# integrity hash; `bin/node-app` runs index.js with the pinned Node.js.
+{ inputs, src, name, ... }:
+
+inputs.pkgs.lib.buildNpmPackage {
+  inherit name src;
+  nodejs = inputs.pkgs.nodejs;
+}

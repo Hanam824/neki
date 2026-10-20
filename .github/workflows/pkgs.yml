@@ -1,0 +1,95 @@
+name: Packages
+
+# Builds and runs the example projects with the real package set on every
+# OS: Rust (offline from Cargo.lock), Node.js (from package-lock.json),
+# Python (with a pinned wheel) and a plain-commands project. It downloads
+# the toolchains (about 0.5 GB per OS), so it isn't part of `CI result`.
+on:
+  pull_request:
+    branches: [main]
+    paths: ["pkgs/**", "examples/**", "crates/neki-build/**", "crates/neki-fetch/**", "crates/neki-core/**"]
+  schedule:
+    - cron: "0 3 * * 1" # Mondays
+  workflow_dispatch:
+
+concurrency:
+  group: pkgs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  examples:
+    name: Examples (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-${{ runner.arch }}-release
+
+      - name: Build neki
+        run: cargo build --release --locked -p neki-cli -p neki-shim
+
+      # The default store location, set up as the README says.
+      - name: Create the store
+        if: runner.os != 'Windows'
+        run: sudo mkdir -p /opt/neki && sudo chown "$USER" /opt/neki
+
+      - name: Build the examples
+        run: |
+          neki=target/release/neki
+          for example in hello node-app python-tool rust-hello; do
+            echo "::group::$example"
+            "$neki" -C "examples/$example" build
+            echo "::endgroup::"
+          done
+
+      - name: Run them
+        run: |
+          cat examples/hello/result/share/hello/greeting.txt
+          if [ "$RUNNER_OS" = Windows ]; then
+            cmd //c 'examples\node-app\result\bin\node-app.cmd'
+            cmd //c 'examples\python-tool\result\bin\python-tool.cmd'
+            examples/rust-hello/result/bin/rust-hello.exe
+          else
+            examples/node-app/result/bin/node-app
+            examples/python-tool/result/bin/python-tool
+            examples/rust-hello/result/bin/rust-hello
+          fi
+
+      # Deleting the outputs and building again must give the same bytes.
+      # The dev shells keep the toolchains (GC roots), so only the projects
+      # themselves are built again.
+      - name: Rebuild and compare
+        run: |
+          neki=target/release/neki
+          hashes() {
+            for example in hello node-app python-tool rust-hello; do
+              out="$("$neki" --json -C "examples/$example" build | tr -d '\n' | sed -E 's/.*[\\/]([0-9a-z]{32}-[^"\\/]+)".*/\1/')"
+              echo "$example $("$neki" --json store path-info "$out" | grep narHash)"
+            done
+          }
+          for example in hello node-app python-tool rust-hello; do
+            "$neki" -C "examples/$example" develop --print-env posix > /dev/null
+          done
+          before="$(hashes)"
+          for example in hello node-app python-tool rust-hello; do rm "examples/$example/result"; done
+          "$neki" store gc
+          after="$(hashes)"
+          diff <(echo "$before") <(echo "$after") && echo "Every output rebuilt bit-for-bit."

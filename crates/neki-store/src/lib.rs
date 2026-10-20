@@ -1,15 +1,16 @@
 //! The store: immutable, content-addressed paths plus their metadata.
 
-#![allow(unused_variables)] // skeleton: stub bodies
-
+mod db;
 mod gc;
 mod local;
+mod references;
 
-pub use gc::{GcOptions, GcResult};
-pub use local::LocalStore;
+pub use gc::{GcOptions, GcResult, Root};
+pub use local::{EntryKind, LocalStore, TempEntry, copy_tree, file_hash, nar_hash};
+pub use references::scan_references;
 
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use neki_hash::{Hash, StoreDir, StorePath};
 
@@ -17,6 +18,25 @@ use neki_hash::{Hash, StoreDir, StorePath};
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("{}: {source}", path.display())]
+    File {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("store DB: {0}")]
+    Db(#[from] rusqlite::Error),
+    #[error("store DB is corrupt: {0}")]
+    Corrupt(String),
+    #[error("{} changed while it was being added to the store", .0.display())]
+    Changed(PathBuf),
+    #[error("hash mismatch for {what}: expected {expected}, got {got}")]
+    HashMismatch {
+        what: String,
+        expected: String,
+        got: String,
+    },
+    #[error(transparent)]
+    Derivation(#[from] neki_derivation::Error),
     #[error(transparent)]
     Hash(#[from] neki_hash::Error),
     #[error(transparent)]
@@ -26,6 +46,37 @@ pub enum Error {
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+/// File in a package that lists the directories (relative to the package,
+/// one per line) holding its programs. Without it, programs are in `bin`.
+pub const BIN_DIRS_FILE: &str = "neki-support/bin-dirs";
+
+/// The directories of the package at `root` that hold its programs.
+pub fn bin_dirs(root: &Path) -> Vec<PathBuf> {
+    match std::fs::read_to_string(root.join(BIN_DIRS_FILE)) {
+        Ok(text) => text
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(|l| {
+                if l == "." {
+                    root.to_path_buf()
+                } else {
+                    root.join(l)
+                }
+            })
+            .collect(),
+        Err(_) => vec![root.join("bin")],
+    }
+}
+
+/// Attach `path` to an I/O error.
+fn at(path: &Path) -> impl FnOnce(std::io::Error) -> Error + '_ {
+    move |source| Error::File {
+        path: path.to_path_buf(),
+        source,
+    }
+}
 
 /// Metadata of a valid store path (one row of the store DB).
 #[derive(Debug, Clone)]
@@ -64,3 +115,6 @@ pub trait Store {
     /// `paths` and everything reachable from them through references.
     fn closure(&self, paths: &[StorePath]) -> Result<BTreeSet<StorePath>>;
 }
+
+#[cfg(test)]
+mod tests;

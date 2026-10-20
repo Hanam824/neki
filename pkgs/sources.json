@@ -1,0 +1,1138 @@
+{
+  "actionlint": {
+    "version": "1.7.12",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_arm64.tar.gz",
+        "sha256": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_darwin_amd64.tar.gz",
+        "sha256": "5b44c3bc2255115c9b69e30efc0fecdf498fdb63c5d58e17084fd5f16324c644"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz",
+        "sha256": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_arm64.tar.gz",
+        "sha256": "325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_windows_amd64.zip",
+        "sha256": "6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9"
+      }
+    }
+  },
+  "bat": {
+    "version": "0.26.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-aarch64-apple-darwin.tar.gz",
+        "sha256": "e30beff26779c9bf60bb541e1d79046250cb74378f2757f8eb250afddb19e114"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-apple-darwin.tar.gz",
+        "sha256": "830d63b0bba1fa040542ec569e3cf77f60d3356b9de75116a344b061e0894245"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "0dcd8ac79732c0d5b136f11f4ee00e581440e16a44eab5b3105b611bbf2cf191"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "422eb73e11c854fddd99f5ca8461c2f1d6e6dce0a2a8c3d5daade5ffcb6564aa"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-pc-windows-msvc.zip",
+        "sha256": "0f729b4b6f5f28d395c641eacc2e9ff68d0096b85aa0eec344aa62425144b69b"
+      }
+    }
+  },
+  "bun": {
+    "version": "1.4.3",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-darwin-aarch64.zip",
+        "sha256": "80afd4c069b46a6fa8f3ec520bebc750a7843e4a8d5b9583d29ad436c00a3403"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-darwin-x64.zip",
+        "sha256": "62660e6438eb872278877acca77e1152d5d031324df368d4a81b428211489d2d"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-linux-x64.zip",
+        "sha256": "3e730528d89775f03f87f05c06787c4df4099d0a37f3f252e7b829cb23816e18"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-linux-aarch64.zip",
+        "sha256": "efa9813da5ed72423bf847f916e8d2c47c0d776add972354026a75e10da9aa21"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-windows-x64.zip",
+        "sha256": "0bf84e808552beea67bf1202a287a35c6c825d837b287b3f8e9dd513dba35d3d"
+      }
+    }
+  },
+  "cmake": {
+    "version": "4.4.4",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4-macos-universal.tar.gz",
+        "sha256": "4b7b73704b1db9b374e5c9ab8e17ac6148b817b6396ee75cd94a852cbac9d305"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4-macos-universal.tar.gz",
+        "sha256": "4b7b73704b1db9b374e5c9ab8e17ac6148b817b6396ee75cd94a852cbac9d305"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4-linux-x86_64.tar.gz",
+        "sha256": "e5bb807f7728cb60cd8b27ebc97a2edb469b68655f21e844a600c3575b76f5bb"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4-linux-aarch64.tar.gz",
+        "sha256": "a1b6cc63636a0e55c63257cf3315a8a5f129e42fade25db1afea4ff8ab06f25e"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/Kitware/CMake/releases/download/v4.4.4/cmake-4.4.4-windows-x86_64.zip",
+        "sha256": "bace36e94b31c68ab6fa295f26dfa11219e0701cf7c94b0284a7d1cb13dac536"
+      }
+    }
+  },
+  "delta": {
+    "version": "0.20.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/dandavison/delta/releases/download/0.20.1/delta-0.20.1-aarch64-apple-darwin.tar.gz",
+        "sha256": "bc1839cea69288d4673a24faffbb825d408ca907e0f7d33b1678c9e6cdd5e58e"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/dandavison/delta/releases/download/0.20.1/delta-0.20.1-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "69dcb4043f55c29118f408c6efd30115e0a4e0a6709253343b8c8fa814ab4a31"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/dandavison/delta/releases/download/0.20.1/delta-0.20.1-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "da7f4338f593572ff426ae153e0870e2fdc72729416eff551b40cdeb67940db8"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/dandavison/delta/releases/download/0.20.1/delta-0.20.1-x86_64-pc-windows-msvc.zip",
+        "sha256": "c9af7484b33f1dbc1312a892fc7d5753a6d3365140a4000d49e575a2de742c25"
+      }
+    }
+  },
+  "deno": {
+    "version": "2.9.7",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-aarch64-apple-darwin.zip",
+        "sha256": "5cd46d6268f6f78f5d88bdc7159d20bd44cdaa4b3303474839f87ec6fe7ae25c"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-apple-darwin.zip",
+        "sha256": "95daaff11c116a52ad54785e7914c8e9c9cdcaba793c5ed929c74ca2d8e6259a"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip",
+        "sha256": "c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-aarch64-unknown-linux-gnu.zip",
+        "sha256": "c832298b1ad4422481334855f6003e0f54145762c5a134f20a489511d2f65bbf"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip",
+        "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238"
+      }
+    }
+  },
+  "direnv": {
+    "version": "2.38.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/direnv/direnv/releases/download/v2.38.2/direnv.darwin-arm64",
+        "sha256": "30443c413e74614a53deb90234e9c97661b1041a0f4aca601ceb482a578ae8b6"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/direnv/direnv/releases/download/v2.38.2/direnv.darwin-amd64",
+        "sha256": "91ad9ce96e156065ba2c751a7392ee748fa8e49b063e14d7203df6e957c212f9"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/direnv/direnv/releases/download/v2.38.2/direnv.linux-amd64",
+        "sha256": "148820a187930d36ca6a204504e5cdb30d8396cd1a97e64c3b3f10d793c11247"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/direnv/direnv/releases/download/v2.38.2/direnv.linux-arm64",
+        "sha256": "ec2a32dbe2f19dd085bd9315a1b4ea88b55ec288aa7eabe8723490baf466cb23"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/direnv/direnv/releases/download/v2.38.2/direnv.windows-amd64.exe",
+        "sha256": "62a6a16a3473b8e03c2cdc4e2099655bd4284f6da92122b96d78cdce724d4064"
+      }
+    },
+    "install": "direnv"
+  },
+  "dust": {
+    "version": "1.2.6",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-aarch64-apple-darwin.tar.gz",
+        "sha256": "5c37ee0d353165c73aedd6b21b9133182221efe08f9a5e76c082d9d6d5a0935d"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-x86_64-apple-darwin.tar.gz",
+        "sha256": "7603c92462bd56305847732eb25d70ab06386d7bcfbce7532b7cf3937fd9684f"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "cbf2cb5c9d6227e46fc4b29c03dc43b8632020dfc5cf269d263d6e29c399e044"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "a51cf42a4654864837cc116eaca914271d7a09a9c2a60de90ecc2187b8d855a7"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/bootandy/dust/releases/download/v1.2.6/dust-v1.2.6-x86_64-pc-windows-msvc.zip",
+        "sha256": "6a73222902d6960ce7183cd833a5d3ea99a3e3ff3cfb33720c1939a41cb7744d"
+      }
+    }
+  },
+  "fd": {
+    "version": "10.5.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "b67e1836c468e42e411984b56e52fa7abec08c2bd22c867398e7cc134aac5e12"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-x86_64-apple-darwin.tar.gz",
+        "sha256": "7e31028c62c6955877735d0406807aa484c2a5e6f86235a59e26c29c301da590"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "761c72dc8e120d85b22292063be8a796e2eeb20eb3e4f38b8fa2343ccf3514a7"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "c0ee43802e3313a317c5af2f4eabd6ba13eeedd595af9775f05e18a13ac4f52c"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/sharkdp/fd/releases/download/v10.5.0/fd-v10.5.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "a227701b8551c35a9931d9f6da75503cf86d88e182d71fb849a70864c5d57cd7"
+      }
+    }
+  },
+  "fzf": {
+    "version": "0.74.5",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/junegunn/fzf/releases/download/v0.74.5/fzf-0.74.5-darwin_arm64.tar.gz",
+        "sha256": "ada808c7401b9949ce8842274ac16a6b6193fd32dcada396884a6a9a89e5985a"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/junegunn/fzf/releases/download/v0.74.5/fzf-0.74.5-darwin_amd64.tar.gz",
+        "sha256": "aca6cab692e6c069e724a43070a448e18586c7c0fdd1139f6d487ec1680599ed"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/junegunn/fzf/releases/download/v0.74.5/fzf-0.74.5-linux_amd64.tar.gz",
+        "sha256": "d47d7f882972c7d674dbbba998ffa4116e68379616ffac7695d0671e9a722c5f"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/junegunn/fzf/releases/download/v0.74.5/fzf-0.74.5-linux_arm64.tar.gz",
+        "sha256": "cf058001da21724a469b714a29cf4aab9cbe860d218a0d6c1b5b661efad7784c"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/junegunn/fzf/releases/download/v0.74.5/fzf-0.74.5-windows_amd64.zip",
+        "sha256": "01f854ec8b9b47c99a7d78023638f7d2056cfb0af56b72dabd112032eed3993e"
+      }
+    }
+  },
+  "gh": {
+    "version": "2.102.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_macOS_arm64.zip",
+        "sha256": "da922c20d1792e5b2cbf375593d7a658acf034c12c84e007e71c76ef959c337e"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_macOS_amd64.zip",
+        "sha256": "b245f24eb2bf5f75b426b4c26da3651a107f8d5b6f4fddfbfccc5679041378b3"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_amd64.tar.gz",
+        "sha256": "bb766f710eef8ede859c18578c72c327597cd4c8a85b06001b1f3843c6019386"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_linux_arm64.tar.gz",
+        "sha256": "7862c86c72f43df3a2d93ddde6f473285b4e2af61b494849846827e513ef6484"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/cli/cli/releases/download/v2.102.0/gh_2.102.0_windows_amd64.zip",
+        "sha256": "ae64e556ecc240b200f7eba60d550e4bb60d78e860e69dd88c449405b86067f4"
+      }
+    }
+  },
+  "go": {
+    "version": "1.27.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://go.dev/dl/go1.27.2.darwin-arm64.tar.gz",
+        "sha256": "76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5"
+      },
+      "x86_64-darwin": {
+        "url": "https://go.dev/dl/go1.27.2.darwin-amd64.tar.gz",
+        "sha256": "587b59182488b23aa6e5fc25110405a3e0e5b38ed2f5b2f46ed13c32aee356fe"
+      },
+      "x86_64-linux": {
+        "url": "https://go.dev/dl/go1.27.2.linux-amd64.tar.gz",
+        "sha256": "ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5"
+      },
+      "aarch64-linux": {
+        "url": "https://go.dev/dl/go1.27.2.linux-arm64.tar.gz",
+        "sha256": "94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8"
+      },
+      "x86_64-windows": {
+        "url": "https://go.dev/dl/go1.27.2.windows-amd64.zip",
+        "sha256": "1314008898bd40df77af4b014f777f08873dbdfbcd3d92308728ee03304fe04f"
+      }
+    }
+  },
+  "golangci-lint": {
+    "version": "2.15.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-darwin-arm64.tar.gz",
+        "sha256": "d1e409481a8ca846c4bc97e781eb5cb1bd5c23353a0b3977a1cbda1b1b6447d5"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-darwin-amd64.tar.gz",
+        "sha256": "767b899a28285e88ded2823d5dcc4bc5ef681173eb2d80f029a7b17ee4ece3b8"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz",
+        "sha256": "9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-arm64.tar.gz",
+        "sha256": "b4d8f17068b35ee6060cc2f69a16fb48740d706fbba81661c318649c114a6998"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-windows-amd64.zip",
+        "sha256": "cd7ea6063c95de245e17e5246e42bdc14bb221792c429dbd239ab3a6ade6ca6a"
+      }
+    }
+  },
+  "helm": {
+    "version": "4.3.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://get.helm.sh/helm-v4.3.1-darwin-arm64.tar.gz",
+        "sha256": "6b4e61c8cd27d99e5a801e63ff25dd5c70b36875c2cd659d3e9ce6b76fc23198"
+      },
+      "x86_64-darwin": {
+        "url": "https://get.helm.sh/helm-v4.3.1-darwin-amd64.tar.gz",
+        "sha256": "34bec4eba761ba5c16d1965ee6b8f5b0abe5993974a802274e2a4f0418893d89"
+      },
+      "x86_64-linux": {
+        "url": "https://get.helm.sh/helm-v4.3.1-linux-amd64.tar.gz",
+        "sha256": "0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b"
+      },
+      "aarch64-linux": {
+        "url": "https://get.helm.sh/helm-v4.3.1-linux-arm64.tar.gz",
+        "sha256": "8cf8f66ecbc252ac8f7f06cca68aba88508ddfde3a6a34feb1678ad1694b4f88"
+      },
+      "x86_64-windows": {
+        "url": "https://get.helm.sh/helm-v4.3.1-windows-amd64.zip",
+        "sha256": "fcfd7b796dcf0f225abc40b5636a3b01f55f3de2fb1dfb18475df94e62c14112"
+      }
+    }
+  },
+  "hyperfine": {
+    "version": "2.0.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/sharkdp/hyperfine/releases/download/v2.0.0/hyperfine-v2.0.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "590b839cfea386b384ce0b42d16daf2910277cf30950656194bb3a5f20dea81e"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/sharkdp/hyperfine/releases/download/v2.0.0/hyperfine-v2.0.0-x86_64-apple-darwin.tar.gz",
+        "sha256": "8afe204926afefa406ad320cef0672b739e5f676c623fbd6d43d779bacd684e3"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/sharkdp/hyperfine/releases/download/v2.0.0/hyperfine-v2.0.0-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "38e59087bd65520930a13cf513d8a493b7043741e8ad62349a8a9929eb61bc5c"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/sharkdp/hyperfine/releases/download/v2.0.0/hyperfine-v2.0.0-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "f8244d1e17f8da23ee6b3ae2cdc04a6a185a450f6b74e09bff12e498038fcbc9"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/sharkdp/hyperfine/releases/download/v2.0.0/hyperfine-v2.0.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "3dec51acee1060908e67948838d6bc0a7aacde0774acebfa4afb220dcf0bc078"
+      }
+    }
+  },
+  "jdk": {
+    "version": "21.0.12.1+1-LTS",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "3623232f33a9c3baadf304480b2535f9a3cba8a58d42ecbb438ba267315d9998"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_mac_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "44db0f08196daf19a47f90d13388b0c943b67663cb537f998fe29e836fa842ce"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_aarch64_linux_hotspot_21.0.12.1_1.tar.gz",
+        "sha256": "23e37e026f12f3e706f18938ff611db3032d075b09d0879a25d06718c773e223"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip",
+        "sha256": "f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e"
+      }
+    }
+  },
+  "jq": {
+    "version": "1.8.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-macos-arm64",
+        "sha256": "2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-macos-amd64",
+        "sha256": "e94b266e3c26690550006abe63152b782280f4e14374accdf04cbde844f00bc0"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-linux-amd64",
+        "sha256": "b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-linux-arm64",
+        "sha256": "8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-windows-amd64.exe",
+        "sha256": "a6fc67fedaf9128a3309a1e2ebb8b986aeccf70122ee46d2cb4849e423f0c627"
+      }
+    },
+    "install": "jq"
+  },
+  "just": {
+    "version": "1.59.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "6574cea774ed4cae12e24b6aa11857de33e80dab4667cf628fd5840df96a2a9d"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-x86_64-apple-darwin.tar.gz",
+        "sha256": "036ead9df9bc31dbae9934ae3b4236ed124d0bafcffd33439460ae084d5c9cb7"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "409044617b6f06517c1035e55ca38c8c856ff8b650e41bc2aa1ef82d5903a23e"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "23871b1702bfd550fb5f901778fd4290ecf2ee034a45a889fbe96d89b188086d"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/casey/just/releases/download/1.59.0/just-1.59.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "9c5463e2d0974e31bee71346aa5cbf19167de1585a4abc1bae7b3b04604ea9c0"
+      }
+    }
+  },
+  "k9s": {
+    "version": "0.51.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Darwin_arm64.tar.gz",
+        "sha256": "9b8c0e8f461e5d33aeee43a67f5ef4aff646a008a786887b8266cbb153c610cc"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Darwin_amd64.tar.gz",
+        "sha256": "7e8802c57c45a0cd389e8fc38472243fe4cf48d8ad5957e189ce370e19e5eda0"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_amd64.tar.gz",
+        "sha256": "c3752ad51a5a4015a113819c4eeb6e55a4d0e4b8e652494797532f6fc8161dd7"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Linux_arm64.tar.gz",
+        "sha256": "3ee05c82e5f9198928a4e86133608ba6a2c10a2244d6a7789e820f78319d640c"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/derailed/k9s/releases/download/v0.51.0/k9s_Windows_amd64.zip",
+        "sha256": "bba299f1877913979831543a008f2e104995d2ea4ac8f23d7f49c0444857d973"
+      }
+    }
+  },
+  "kubectl": {
+    "version": "1.37.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://dl.k8s.io/release/v1.37.1/bin/darwin/arm64/kubectl",
+        "sha256": "fd65982c97ddad3106754b69ffa196d0e543aa591930ae52aed1adfb92f8c77f"
+      },
+      "x86_64-darwin": {
+        "url": "https://dl.k8s.io/release/v1.37.1/bin/darwin/amd64/kubectl",
+        "sha256": "6851381c486ff6edd691623e3d65c87cb9a5b02887ff8fbbb38d8a031b748387"
+      },
+      "x86_64-linux": {
+        "url": "https://dl.k8s.io/release/v1.37.1/bin/linux/amd64/kubectl",
+        "sha256": "65691ff77eb6fa44c908b77a1082c9f092c3b9733b5cefabec0d1104890e21a8"
+      },
+      "aarch64-linux": {
+        "url": "https://dl.k8s.io/release/v1.37.1/bin/linux/arm64/kubectl",
+        "sha256": "ff749f4b78d9c4f1ec87307df9b50119ed819e2094aa9810cb9acffc3286c8c7"
+      },
+      "x86_64-windows": {
+        "url": "https://dl.k8s.io/release/v1.37.1/bin/windows/amd64/kubectl.exe",
+        "sha256": "14b93c4916a6f37a06fbc1f46b0a1d2404c4f9741be09f00d6caf8af3b05f1d3"
+      }
+    },
+    "install": "kubectl"
+  },
+  "lazygit": {
+    "version": "0.66.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/jesseduffield/lazygit/releases/download/v0.66.2/lazygit_0.66.2_darwin_arm64.tar.gz",
+        "sha256": "fadda59ae7665ba556fcbaa704c7eade6e40d016d3f3b25d6327dd1f3f906a0c"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/jesseduffield/lazygit/releases/download/v0.66.2/lazygit_0.66.2_darwin_x86_64.tar.gz",
+        "sha256": "de5d3771e4befa6fe17590e21445614998adc1ef34a71f4003df6764247517ab"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/jesseduffield/lazygit/releases/download/v0.66.2/lazygit_0.66.2_linux_x86_64.tar.gz",
+        "sha256": "158efc9ddfa1241fab5fb3526bb442c8dc6c4b1904d73213b9e4e93e03c52034"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/jesseduffield/lazygit/releases/download/v0.66.2/lazygit_0.66.2_linux_arm64.tar.gz",
+        "sha256": "79a3161eeb642f0473e23db6341f7baabd4a5933e921a9c1167c5d5c765c41a4"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/jesseduffield/lazygit/releases/download/v0.66.2/lazygit_0.66.2_windows_x86_64.zip",
+        "sha256": "8b1e2194c2d8ac660f0a132cb4384e9d2fe1405217a144e280df16383c18d45c"
+      }
+    }
+  },
+  "neovim": {
+    "version": "0.12.6",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-macos-arm64.tar.gz",
+        "sha256": "1dbd148222b051ba6c307c4d17a318ed083df018a4f6a5a0ce46955ffc9ab87b"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-macos-x86_64.tar.gz",
+        "sha256": "481424f1dbc85f637d57e47d27d042aa9c883e5a4fe9ee64fc4ee9573b221998"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-linux-x86_64.tar.gz",
+        "sha256": "474430d53e6264f6d6dd18db42d6dc9df3a1b56ca9e88a325bbf860e1a811d87"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-linux-arm64.tar.gz",
+        "sha256": "8f1f64a0bdb97247034038c3823c6cbad5bdf9ecd5751b85494b71c3ee04c815"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/neovim/neovim/releases/download/v0.12.6/nvim-win64.zip",
+        "sha256": "4e12b7103b601ffc8f25954b4da100f339faa73dccb69a5b135e897fa3d893ed"
+      }
+    }
+  },
+  "ninja": {
+    "version": "1.13.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-mac.zip",
+        "sha256": "c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-mac.zip",
+        "sha256": "c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-linux.zip",
+        "sha256": "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-linux-aarch64.zip",
+        "sha256": "fd2cacc8050a7f12a16a2e48f9e06fca5c14fc4c2bee2babb67b58be17a607fc"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/ninja-build/ninja/releases/download/v1.13.2/ninja-win.zip",
+        "sha256": "07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65"
+      }
+    }
+  },
+  "nodejs": {
+    "version": "24.22.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-darwin-arm64.tar.gz",
+        "sha256": "6a9724d9b50a5f22b4816cded441b5a8d9ddae546191a5e5b7efa5a5e2ee26d5"
+      },
+      "x86_64-darwin": {
+        "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-darwin-x64.tar.gz",
+        "sha256": "495e3f273c645f3c4677d438304cdfc701729ea5dec5728f5c8e76a2dece4b91"
+      },
+      "x86_64-linux": {
+        "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-linux-x64.tar.gz",
+        "sha256": "28ea0a438de9a13bd7891fd758eee6c7819ee8af5442dfd8d45bd65e56d4228c"
+      },
+      "aarch64-linux": {
+        "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-linux-arm64.tar.gz",
+        "sha256": "b7e7991d5407815adfa74a2a9cd4db683552c8ce32ff4a295c22e972849c3f5d"
+      },
+      "x86_64-windows": {
+        "url": "https://nodejs.org/dist/v24.22.0/node-v24.22.0-win-x64.zip",
+        "sha256": "f9683a19877e12a9b167305c8db71040d812876359de21f0d2e97c3f321f80c3"
+      }
+    }
+  },
+  "packer": {
+    "version": "1.16.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_darwin_arm64.zip",
+        "sha256": "c45cb1f851971e8a340c4a36434273cf2c8ef0cc7f5b3ac65588a3539b1df424"
+      },
+      "x86_64-darwin": {
+        "url": "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_darwin_amd64.zip",
+        "sha256": "e3655fb154e718526c3bcaacf327e6247e55945d2fefd59f84f535750f7ef5c4"
+      },
+      "x86_64-linux": {
+        "url": "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_linux_amd64.zip",
+        "sha256": "af38a9e93e4ed1b9ca68206ae969c64c300c82a3dde46a780dfa629f0867f651"
+      },
+      "aarch64-linux": {
+        "url": "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_linux_arm64.zip",
+        "sha256": "4784ac0b9228a61f3ecb3861dbf0bf9ebeab6ddb0f5a10466126b8daa5db0de5"
+      },
+      "x86_64-windows": {
+        "url": "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_windows_amd64.zip",
+        "sha256": "48e9b25ecf807959a1dcb9aa9b074e6fcd08c7b7ed89803538647c5873dbc95b"
+      }
+    }
+  },
+  "protoc": {
+    "version": "36.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-osx-aarch_64.zip",
+        "sha256": "9cd98a532c5c5e0c4161314de0225de27e4c8a323917b6ea7b1b714d3ae23466"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-osx-x86_64.zip",
+        "sha256": "228cc7add4616cc14ca5e80dee83209d44449a7aee95a914ae748fa374efb078"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-x86_64.zip",
+        "sha256": "121f6c7afe1d4d0e3ea6aab9432038599250134cbf4474cb1167d2c7decd4278"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-linux-aarch_64.zip",
+        "sha256": "8b8f18bd2b30346efbc698dd5a73dd7c805f3ef8380f6dfc95c768f3f1852f6a"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/protocolbuffers/protobuf/releases/download/v36.2/protoc-36.2-win64.zip",
+        "sha256": "f0c128dc0d8492eceece83bb459a4c0e316764b929ffbf1aa416357fd644edd3"
+      }
+    }
+  },
+  "python3": {
+    "version": "3.13.16",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-aarch64-apple-darwin-install_only.tar.gz",
+        "sha256": "ca0e6a70fb75a0984751bd75493e3de77680aef7fbd0fea9b903c299537b3423"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-x86_64-apple-darwin-install_only.tar.gz",
+        "sha256": "d1f2e7b5f0cfa25fc856fea819890bbe722f47a692e5ce2552636b5240930b38"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-x86_64-unknown-linux-gnu-install_only.tar.gz",
+        "sha256": "e588e50db882fa6a89f926d9a9ad64e445183af0eda5bda226a2c151b17db8a6"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-aarch64-unknown-linux-gnu-install_only.tar.gz",
+        "sha256": "0fce0605da7b6532d5bdaec185336ffaaddd02ec04e27382014952ca4857ed6d"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261013/cpython-3.13.16%2B20261013-x86_64-pc-windows-msvc-install_only.tar.gz",
+        "sha256": "e1f9233e780fbe951e531b0eb207d794e1c3fb39d523a6f481f4fc01ef2b6ca5"
+      }
+    }
+  },
+  "ripgrep": {
+    "version": "15.2.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "3750b2e93f37e0c692657da574d7019a101c0084da05a790c83fd335bad973e4"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-apple-darwin.tar.gz",
+        "sha256": "af7825fcc69a2afc7a7aea55fc9af90e26421d8f20fe59df32e233c0b8a231c1"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "33e15bcf1624b25cdd2a55813a47a2f95dbe126268203e76aa6a585d1e7b149c"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "a740b91c82eaf9914cfedd353572f2791cbe0162c84101ee0951058f4dcbc90d"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "71b2fef860abe467217a538ff31de02f5258807c0129f771846f87bd029aafc5"
+      }
+    }
+  },
+  "ruff": {
+    "version": "0.17.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-aarch64-apple-darwin.tar.gz",
+        "sha256": "1c8e6e36538eaa0b996378a20c226403c4ca6369ac24884751b024d3a9530b86"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-x86_64-apple-darwin.tar.gz",
+        "sha256": "88ee16f88dba9d440e06375f46898ec85baf578042ad086764d5a33558bb6e17"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "2d9878b5e6a3d0dedadbfc01a64bfe54e72f560adbfd235937cd29e1fc9238e3"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "255404ccf2f7950ff6aad8858321a6f416fe2a840ae4e37dfb4c21cb8774f325"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/astral-sh/ruff/releases/download/0.17.1/ruff-x86_64-pc-windows-msvc.zip",
+        "sha256": "a841fb7e59680508b9394bfea32e369b3907cc6620a491c65d8d1f479498db82"
+      }
+    }
+  },
+  "rust": {
+    "version": "1.99.1",
+    "systems": {
+      "aarch64-darwin": {
+        "target": "aarch64-apple-darwin",
+        "components": [
+          {
+            "component": "rustc",
+            "url": "https://static.rust-lang.org/dist/rustc-1.99.1-aarch64-apple-darwin.tar.gz",
+            "sha256": "cc998c1dc8df006106472357aa87838b2da3f7b25446b98a94cfd58796cb0610"
+          },
+          {
+            "component": "cargo",
+            "url": "https://static.rust-lang.org/dist/cargo-1.99.1-aarch64-apple-darwin.tar.gz",
+            "sha256": "b5cc7634f919949c3e5e131123f813416dc47f6b809a5371d12f1f593595ae13"
+          },
+          {
+            "component": "rust-std",
+            "url": "https://static.rust-lang.org/dist/rust-std-1.99.1-aarch64-apple-darwin.tar.gz",
+            "sha256": "c124006d63885ba1029aca49efd59e93be6b2b171c379318ff94a00ef5eba664"
+          }
+        ]
+      },
+      "x86_64-darwin": {
+        "target": "x86_64-apple-darwin",
+        "components": [
+          {
+            "component": "rustc",
+            "url": "https://static.rust-lang.org/dist/rustc-1.99.1-x86_64-apple-darwin.tar.gz",
+            "sha256": "dad7c1300549bc846e1f02652fa11d131b86cdbb8288d64da5f62b4504d62a8f"
+          },
+          {
+            "component": "cargo",
+            "url": "https://static.rust-lang.org/dist/cargo-1.99.1-x86_64-apple-darwin.tar.gz",
+            "sha256": "ed05dab7a703d1b4c6fa5cec8e99272cb1c3902a323986c80e0bc57915c85ddd"
+          },
+          {
+            "component": "rust-std",
+            "url": "https://static.rust-lang.org/dist/rust-std-1.99.1-x86_64-apple-darwin.tar.gz",
+            "sha256": "5cc4606fdd6c9226be51f59a333942cc8a203e74f7da38d47aaaf44b986bfe3c"
+          }
+        ]
+      },
+      "x86_64-linux": {
+        "target": "x86_64-unknown-linux-gnu",
+        "components": [
+          {
+            "component": "rustc",
+            "url": "https://static.rust-lang.org/dist/rustc-1.99.1-x86_64-unknown-linux-gnu.tar.gz",
+            "sha256": "85e7c0e6f21636f714e2a42966011364a6cc56b6548126d32144d6ba90904966"
+          },
+          {
+            "component": "cargo",
+            "url": "https://static.rust-lang.org/dist/cargo-1.99.1-x86_64-unknown-linux-gnu.tar.gz",
+            "sha256": "47babc028247e26577f8a1bf390b11f447ad9b7ab93f5c9a0dda078935fc149b"
+          },
+          {
+            "component": "rust-std",
+            "url": "https://static.rust-lang.org/dist/rust-std-1.99.1-x86_64-unknown-linux-gnu.tar.gz",
+            "sha256": "d1290c05994a59c029e562cb75be1bddc6fb11a4c501e1b7b0f61d119c6cbb12"
+          }
+        ]
+      },
+      "aarch64-linux": {
+        "target": "aarch64-unknown-linux-gnu",
+        "components": [
+          {
+            "component": "rustc",
+            "url": "https://static.rust-lang.org/dist/rustc-1.99.1-aarch64-unknown-linux-gnu.tar.gz",
+            "sha256": "e4656174f0ba5ea3dab5f58d069b7afae6d7616187de31c65cb6432e4f941399"
+          },
+          {
+            "component": "cargo",
+            "url": "https://static.rust-lang.org/dist/cargo-1.99.1-aarch64-unknown-linux-gnu.tar.gz",
+            "sha256": "201dbeac1795713b98aeae044e01695e70ae2ea3ded42683ebce5a8a1c90f8a6"
+          },
+          {
+            "component": "rust-std",
+            "url": "https://static.rust-lang.org/dist/rust-std-1.99.1-aarch64-unknown-linux-gnu.tar.gz",
+            "sha256": "32d1ddb44cd49d6497ab6a24f440d4286a20b2667fdf928b876f59c66d13d722"
+          }
+        ]
+      },
+      "x86_64-windows": {
+        "target": "x86_64-pc-windows-gnu",
+        "components": [
+          {
+            "component": "rustc",
+            "url": "https://static.rust-lang.org/dist/rustc-1.99.1-x86_64-pc-windows-gnu.tar.gz",
+            "sha256": "43b17e9a9134ea72562bfbb23728a830f671ea9be1db6a72597a8d240e986b35"
+          },
+          {
+            "component": "cargo",
+            "url": "https://static.rust-lang.org/dist/cargo-1.99.1-x86_64-pc-windows-gnu.tar.gz",
+            "sha256": "57e54617be4420dbb967ca8293f5ace7168104ac12efa9dc7c5c3bda112f8b36"
+          },
+          {
+            "component": "rust-std",
+            "url": "https://static.rust-lang.org/dist/rust-std-1.99.1-x86_64-pc-windows-gnu.tar.gz",
+            "sha256": "6546651238a3ac092b763511be524ca6eda6103e5d47342416923be1b3ce837c"
+          },
+          {
+            "component": "rust-mingw",
+            "url": "https://static.rust-lang.org/dist/rust-mingw-1.99.1-x86_64-pc-windows-gnu.tar.gz",
+            "sha256": "30263d7bb4fd0bf63a153afe36d7fc102f929a7d42781651c6b3a03a414ba428"
+          }
+        ]
+      }
+    }
+  },
+  "sd": {
+    "version": "1.1.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/chmln/sd/releases/download/v1.1.0/sd-v1.1.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "4bd3c09226376ca0a1d69589c91e86276fae36c5fbaaee669afce583f6682030"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/chmln/sd/releases/download/v1.1.0/sd-v1.1.0-x86_64-apple-darwin.tar.gz",
+        "sha256": "1fca1e9c91813a8aac6821063c923107ba0f66a83309e095edcd3b202f67f97e"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/chmln/sd/releases/download/v1.1.0/sd-v1.1.0-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "02f00f4777d43e8e95b7b8d49e1a0d6e502fed4b8e79c1c8b8063857a30caa2e"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/chmln/sd/releases/download/v1.1.0/sd-v1.1.0-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "ec8c93c0533ff21f4851d11566808d4082544baf063d9b96ea77c27e98b7cd99"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/chmln/sd/releases/download/v1.1.0/sd-v1.1.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "59837c2e7c911099aca1cc46b663bcdc5a949fd3e9fbbaf34fc73e5d5d71007c"
+      }
+    }
+  },
+  "shellcheck": {
+    "version": "0.11.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.aarch64.tar.xz",
+        "sha256": "56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.darwin.x86_64.tar.xz",
+        "sha256": "3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz",
+        "sha256": "8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.aarch64.tar.xz",
+        "sha256": "12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.zip",
+        "sha256": "8a4e35ab0b331c85d73567b12f2a444df187f483e5079ceffa6bda1faa2e740e"
+      }
+    }
+  },
+  "shfmt": {
+    "version": "3.14.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_darwin_arm64",
+        "sha256": "b7c872db63553ccffc7253aba3ed7d4885a27d83f1ba567b1138c6315a5847e5"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_darwin_amd64",
+        "sha256": "d33eee0da0f92835b3562e9767a05cee7e4eaeef47daa03bfd09da17b4b590a6"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_amd64",
+        "sha256": "76e77641faa025814b77f153b29796b8e6fa2fca03e0c76a691608b86c7ea7bf"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_linux_arm64",
+        "sha256": "5f2db09dae91fca848f7adbdd014632e921a383863a2ad7e0450ad3aba0c6489"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/mvdan/sh/releases/download/v3.14.1/shfmt_v3.14.1_windows_amd64.exe",
+        "sha256": "13629ce28442ca80b6b5a819f7574ab39e1c28c6e26734ca816c9714e04851df"
+      }
+    },
+    "install": "shfmt"
+  },
+  "starship": {
+    "version": "1.27.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/starship/starship/releases/download/v1.27.0/starship-aarch64-apple-darwin.tar.gz",
+        "sha256": "5362da8cb2928f98f3ce0ffda697cf0f8de70081db000dae316d6d3a404f6cf0"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/starship/starship/releases/download/v1.27.0/starship-x86_64-apple-darwin.tar.gz",
+        "sha256": "344e4d38787e0aa86dd522ae5462e6fb6da1227691f81a79ffed480a4563ccb3"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/starship/starship/releases/download/v1.27.0/starship-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "10c8eb4cb3b761d9bf59ea828444c2dab36c900b7d69a69e08814b286969df89"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/starship/starship/releases/download/v1.27.0/starship-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "341f5cbf24699fa0b27ec88965ad25f862ea09e15d35a543fd6ffdff1d2aa00d"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/starship/starship/releases/download/v1.27.0/starship-x86_64-pc-windows-msvc.zip",
+        "sha256": "7764f861805376af2812dd78c84fadc16b714cf3f346baed9b597bfda8484403"
+      }
+    }
+  },
+  "terraform": {
+    "version": "1.16.6",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_darwin_arm64.zip",
+        "sha256": "85e1bc78ab45bdc5f82a7bac3929e37d072834a584d22583a2498dc67bb624cd"
+      },
+      "x86_64-darwin": {
+        "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_darwin_amd64.zip",
+        "sha256": "794a36c3f7ebf6c58f2089c226068a539d1705ba358a5679b51671c8dc7ebc7b"
+      },
+      "x86_64-linux": {
+        "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_linux_amd64.zip",
+        "sha256": "38034b38d03096399a7a1264a14561a8029b2b496fd1f169452656e53968f1b7"
+      },
+      "aarch64-linux": {
+        "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_linux_arm64.zip",
+        "sha256": "a750b5a11038f165846b2658c40c88cd7070aa67a61bab431a14ba27928ea9ea"
+      },
+      "x86_64-windows": {
+        "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_windows_amd64.zip",
+        "sha256": "6ea2c186e0e76a113af30fbcdcf7a4b4c70756317994a04929e5c90b9e94b1df"
+      }
+    }
+  },
+  "typos": {
+    "version": "1.51.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/crate-ci/typos/releases/download/v1.51.1/typos-v1.51.1-aarch64-apple-darwin.tar.gz",
+        "sha256": "316d50a32c3726a80ab39c6d12141b70080498973c5e8a9b068b12cde78b10c1"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/crate-ci/typos/releases/download/v1.51.1/typos-v1.51.1-x86_64-apple-darwin.tar.gz",
+        "sha256": "f3451079971633a7f769fb958fe06b0d64b5f1dc46df0854aa1ddb9a6f4031d6"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/crate-ci/typos/releases/download/v1.51.1/typos-v1.51.1-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "93c301fd4120ff076e2cc2a6d6a61cab4a4bdb81899287c0938b452e56d1f454"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/crate-ci/typos/releases/download/v1.51.1/typos-v1.51.1-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "2ac5e37b3236b3c07dec5cdf1527acf143aec4674a6089b0bf424d021b35e099"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/crate-ci/typos/releases/download/v1.51.1/typos-v1.51.1-x86_64-pc-windows-msvc.zip",
+        "sha256": "518f759fba43205f17a717656054c1d25bc883455a6296989e9d021c6edb7c59"
+      }
+    }
+  },
+  "uv": {
+    "version": "0.13.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.13.2/uv-aarch64-apple-darwin.tar.gz",
+        "sha256": "4a5d878cd0db3a57d79eec638c275e71c394e10533ae54c77b33d940866f53b7"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.13.2/uv-x86_64-apple-darwin.tar.gz",
+        "sha256": "08f0cb0d63a012ffa07659d1872030c1110fccdd665d49bc3683b0ca262b4a62"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.13.2/uv-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "aba5d9e0af3662ee85772c5da147c3824cd6728a50bce6c507ae20672df7e83e"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.13.2/uv-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "b7444ae484d951d856b1ea0bae8224bf0ea856e9cefe8bd67c6d3f5d98375c78"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/astral-sh/uv/releases/download/0.13.2/uv-x86_64-pc-windows-msvc.zip",
+        "sha256": "9cfb447a4027550f134753253fdffbcd35b79a66dd888260bf6776891916069e"
+      }
+    }
+  },
+  "watchexec": {
+    "version": "2.8.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/watchexec/watchexec/releases/download/v2.8.0/watchexec-2.8.0-aarch64-apple-darwin.tar.xz",
+        "sha256": "8da8bdbfb8568138616a082c05a87224e08d5cb2994feb956426291cf0c6fe10"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/watchexec/watchexec/releases/download/v2.8.0/watchexec-2.8.0-x86_64-apple-darwin.tar.xz",
+        "sha256": "b7f694ad19c1cf168388f3295a5e825425f7dac5cd27cffd2d89a51ed4ab0f22"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/watchexec/watchexec/releases/download/v2.8.0/watchexec-2.8.0-x86_64-unknown-linux-musl.tar.xz",
+        "sha256": "35ea667cbe4bc96c23ba2a1f46c94c46bc385b67165e3bf621c0e7e4959aa99b"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/watchexec/watchexec/releases/download/v2.8.0/watchexec-2.8.0-aarch64-unknown-linux-musl.tar.xz",
+        "sha256": "3961878b21e3c1729279322f4007dd5bbf0032110fbcb5e7b983946a9ceb3bf6"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/watchexec/watchexec/releases/download/v2.8.0/watchexec-2.8.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "0c872fc18c8e801f21614c6daf2504a5826d5c705bb67f7a583d879f5410d9ea"
+      }
+    }
+  },
+  "xh": {
+    "version": "0.26.2",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/ducaale/xh/releases/download/v0.26.2/xh-v0.26.2-aarch64-apple-darwin.tar.gz",
+        "sha256": "cc5739d061a8469d0011ca0ab92d4a5cd726cc56f0ef30108953b119f54d0719"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/ducaale/xh/releases/download/v0.26.2/xh-v0.26.2-x86_64-apple-darwin.tar.gz",
+        "sha256": "1f19ae1a2f411c58bd6943c638472cd5c4179ed019fe4f786e524b27da4c14a2"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/ducaale/xh/releases/download/v0.26.2/xh-v0.26.2-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "8c53b6a23435754f9e2ea8ab8c0d0296a1921404b88132cf9b364ff6e8c22a6e"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/ducaale/xh/releases/download/v0.26.2/xh-v0.26.2-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "3a44900a8ac53f614aa0cd1d2e54ecf4e93584384c1ad091aa18d7992686d7eb"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/ducaale/xh/releases/download/v0.26.2/xh-v0.26.2-x86_64-pc-windows-msvc.zip",
+        "sha256": "7907c1ef225382fb5955c8274aa23e31b70622c4d39dbc76cf945dc8ce15a78d"
+      }
+    }
+  },
+  "yq": {
+    "version": "4.54.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_darwin_arm64",
+        "sha256": "fee511a181bd8b3e6b7da98842b41973bfac8cd3bcd341ed29a584620b5b2844"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_darwin_amd64",
+        "sha256": "3a812fce205a4d67014fb71b7fa297092210e580df3d8f52dddc2cf3a599c22b"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_amd64",
+        "sha256": "8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_linux_arm64",
+        "sha256": "189088da0c6429ec5178dfaab1a114805f6cab0b61b165ab236efedf1d57a71b"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_windows_amd64.exe",
+        "sha256": "b645f47ebb3a0d2fbab52998550bbd0a1706f23b5ca5f5b48e638c580bb70928"
+      }
+    },
+    "install": "yq"
+  },
+  "zig": {
+    "version": "0.17.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://ziglang.org/download/0.17.0/zig-aarch64-macos-0.17.0.tar.xz",
+        "sha256": "b607e9b9234790a008116ae5bdb71c6243b84b9fb42a53a9e70fde41c06c536a"
+      },
+      "x86_64-darwin": {
+        "url": "https://ziglang.org/download/0.17.0/zig-x86_64-macos-0.17.0.tar.xz",
+        "sha256": "4f9a1c5269aa17ebda5e6d3c2b89d6cbf36f7d2b22a0306e9ab98f25f95529c6"
+      },
+      "x86_64-linux": {
+        "url": "https://ziglang.org/download/0.17.0/zig-x86_64-linux-0.17.0.tar.xz",
+        "sha256": "1cbe9df9f27e6b78d14ccbca43b6703a404ef79ef1c463de901d7f088d4e2026"
+      },
+      "aarch64-linux": {
+        "url": "https://ziglang.org/download/0.17.0/zig-aarch64-linux-0.17.0.tar.xz",
+        "sha256": "9e8d11661d4ae3bd57702a3832781e23ad151dde5798e16a5ccd503f65234ff8"
+      },
+      "x86_64-windows": {
+        "url": "https://ziglang.org/download/0.17.0/zig-x86_64-windows-0.17.0.zip",
+        "sha256": "b5663f69581dcf391293fbf16c06cb80d81d806545ce618b4d0bab7f0eb8c428"
+      }
+    }
+  },
+  "zoxide": {
+    "version": "0.10.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "b55ae6f2f5f23d0a6ccb3bd4eeb2af9c7e0a6556e5255c82100e40305129bbb0"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-x86_64-apple-darwin.tar.gz",
+        "sha256": "18ab7ae2633ad6e2ab79a4e665cbba1e95b7c872d44523326efb793202451dad"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "2d93385b99f3e82cf2701609a1bffcad863fbeb75aa3fe7eb6be4d29be68b1ae"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "f1f16c5d6298d63dee467eedea1cdcd8490e43e493bea43acd416dc9033ef641"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/ajeetdsouza/zoxide/releases/download/v0.10.0/zoxide-0.10.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "f465ae548f8754c8e7edbc60b45fbf58c92bfe123db83d790252d6810fa5daf1"
+      }
+    }
+  }
+}

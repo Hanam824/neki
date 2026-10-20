@@ -19,6 +19,10 @@ pub enum Event {
         done: u64,
         total: Option<u64>,
     },
+    /// A path was downloaded from a binary cache instead of being built.
+    Substituted {
+        path: StorePath,
+    },
     Message(String),
 }
 

@@ -5,6 +5,8 @@ export struct ProjectItem {
     // Project root for loaded projects, the error message otherwise.
     status: string,
     ok: bool,
+    // "not built", "built" or "changed since the last build".
+    build-state: string,
 }
 
 export struct KeyValue {
@@ -29,14 +31,46 @@ export struct ProjectDetail {
     dev-shell: [KeyValue],
 }
 
+export struct BuildItem {
+    drv: string,
+    name: string,
+    // "running", "built", "failed" or "downloaded".
+    status: string,
+}
+
+export struct PathItem {
+    name: string,
+    hash: string,
+    size: string,
+}
+
+export struct PathDetail {
+    path: string,
+    nar-hash: string,
+    nar-size: string,
+    closure-size: string,
+    deriver: string,
+    references: [string],
+    // The closure as an indented tree, one path per line.
+    tree: [string],
+}
+
+export struct GenerationItem {
+    number: int,
+    created: string,
+    packages: string,
+    current: bool,
+}
+
 export global AppState {
-    // 0 = projects, 1 = store, 2 = profiles, 3 = settings.
+    // 0 = projects, 1 = builds, 2 = store, 3 = profiles, 4 = settings.
     in-out property <int> page: 0;
     in-out property <bool> busy: false;
     in-out property <string> busy-label;
     // Newest entry first.
     in-out property <[LogEntry]> log;
 
+    // Projects
     in-out property <[ProjectItem]> projects;
     in-out property <int> selected-project: -1;
     in-out property <ProjectDetail> detail;
@@ -44,15 +78,39 @@ export global AppState {
     in-out property <bool> manifest-dirty: false;
     in-out property <string> manifest-error;
     in-out property <string> new-project-path;
+    // A project to switch to once unsaved changes are dealt with.
+    in-out property <int> pending-select: -1;
 
+    // Builds
+    in-out property <[BuildItem]> builds;
+    in-out property <int> selected-build: -1;
+    in-out property <[string]> build-log;
+
+    // Store
     in-out property <string> store-dir;
-    in-out property <[KeyValue]> settings;
+    in-out property <string> store-filter;
+    in-out property <[PathItem]> store-paths;
+    in-out property <string> store-summary;
+    in-out property <int> selected-path: -1;
+    in-out property <PathDetail> path-detail;
+    in-out property <string> why-target;
+    in-out property <[string]> why-chains;
+    in-out property <[KeyValue]> gc-preview;
+    in-out property <string> gc-summary;
+
+    // Profiles
     in-out property <string> profile-name: "default";
+    in-out property <[string]> profiles;
     in-out property <string> profile-packages;
-    in-out property <[KeyValue]> generations;
+    in-out property <[GenerationItem]> generations;
+    in-out property <string> current-link;
+    in-out property <[KeyValue]> generation-diff;
+
+    in-out property <[KeyValue]> settings;
 
     callback add-project(string);
     callback create-project(string);
+    callback pick-folder();
     callback remove-project(int);
     callback select-project(int);
     callback refresh-projects();
@@ -60,9 +118,21 @@ export global AppState {
     callback reload-manifest();
     callback build-project(string);
     callback lock-project();
-    // "verify", "gc-dry-run", "gc" or "optimise".
+    callback open-dev-shell();
+
+    callback select-build(int);
+    callback cancel-build();
+
+    // "verify", "gc-preview", "gc" or "optimise".
     callback store-action(string);
-    // action ("history", "rollback" or "install"), profile, packages.
+    callback load-store();
+    callback filter-store(string);
+    callback select-path(int);
+    callback why-depends(string);
+
+    // action ("history", "rollback", "install", "remove" or "switch"),
+    // profile, packages (or the generation number for "switch").
     callback profile-action(string, string, string);
+    callback diff-generations(int, int);
     callback clear-log();
 }
