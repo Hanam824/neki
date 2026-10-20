@@ -167,7 +167,7 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 - Windows symlinks via Developer Mode (P5). Until then, unpacking a NAR that contains a symlink fails on Windows with a clear error
 - Tray icon with build notifications: needs `libappindicator`/StatusNotifier on Linux, which isn't available everywhere
 - Syntax-highlighted `neki.toml` editor: Slint has no code editor widget
-- Language adapters: npm packages with install scripts; Python packages built from source (sdists), because Python on Windows needs MSVC to compile them (prebuilt platform wheels work); Cargo `git` dependencies whose `Cargo.toml` inherits fields from their workspace (`version.workspace = true`), which `cargo vendor` would normalize
+- Language adapters: npm packages with install scripts; Python packages built from source (sdists), because Python on Windows needs MSVC to compile them (prebuilt platform wheels work)
 - MSI/EXE installers, registry, services, drivers (P6)
 - LLVM-mingw stdenv, MSVC as an impure input (P7)
 - ACL / `chattr` hard immutability (P8)

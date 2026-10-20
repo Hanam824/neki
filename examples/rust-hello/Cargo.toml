@@ -6,8 +6,8 @@ publish = false
 
 [dependencies]
 itoa = "1"
-# From git, to show git dependencies (pinned in Cargo.lock).
-ryu = { git = "https://github.com/dtolnay/ryu", tag = "1.0.20" }
+# From git (pinned in Cargo.lock); its Cargo.toml inherits from its workspace.
+rayon = { git = "https://github.com/rayon-rs/rayon", tag = "v1.12.0" }
 
 # Not part of the Neki workspace.
 [workspace]
