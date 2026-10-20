@@ -163,24 +163,28 @@ impl Neki {
 
     // ----- building -----
 
-    fn build_options(&self) -> Result<neki_build::BuildOptions> {
-        self.cancel.store(false, Ordering::Relaxed);
+    /// The configured binary caches, trusting the configured keys.
+    fn caches(&self) -> Result<Vec<BinaryCache>> {
         let keys = self
             .config
             .trusted_public_keys
             .iter()
             .map(|k| PublicKey::parse(k))
             .collect::<Result<Vec<_>, _>>()?;
-        let substituters = self
+        Ok(self
             .config
             .substituters
             .iter()
-            .map(|url| {
-                Arc::new(CacheSubstituter(BinaryCache::new(
-                    url.clone(),
-                    keys.clone(),
-                ))) as Arc<dyn neki_build::Substituter>
-            })
+            .map(|url| BinaryCache::new(url.clone(), keys.clone()))
+            .collect())
+    }
+
+    fn build_options(&self) -> Result<neki_build::BuildOptions> {
+        self.cancel.store(false, Ordering::Relaxed);
+        let substituters = self
+            .caches()?
+            .into_iter()
+            .map(|cache| Arc::new(CacheSubstituter(cache)) as Arc<dyn neki_build::Substituter>)
             .collect();
         Ok(neki_build::BuildOptions {
             max_jobs: self.config.max_jobs,
@@ -199,14 +203,7 @@ impl Neki {
     ) -> Result<Vec<StorePath>> {
         let drvs: Vec<StorePath> = targets.iter().map(|t| t.drv.clone()).collect();
         let results = neki_build::realise(store, &drvs, &self.build_options()?, &|event| {
-            events.event(match event {
-                neki_build::BuildEvent::Started { drv } => Event::BuildStarted { drv },
-                neki_build::BuildEvent::Log { drv, line } => Event::BuildLog { drv, line },
-                neki_build::BuildEvent::Finished { drv, success } => {
-                    Event::BuildFinished { drv, success }
-                }
-                neki_build::BuildEvent::Substituted { path } => Event::Substituted { path },
-            })
+            forward(events, event)
         })?;
         targets
             .iter()
@@ -619,6 +616,104 @@ impl Neki {
         Ok(self.store()?.verify()?)
     }
 
+    /// Repair store paths whose contents were modified (`paths`, or every
+    /// path `verify` reports): replace them with a copy from a configured
+    /// binary cache, or else by building their derivation again. A copy is
+    /// only used if it has exactly the recorded hash.
+    pub fn repair(&self, paths: &[String], events: &dyn EventSink) -> Result<RepairReport> {
+        let store = self.store()?;
+        let _gc = store.gc_guard()?;
+        let modified = store.verify()?;
+        let mut targets = Vec::new();
+        if paths.is_empty() {
+            targets = modified;
+        } else {
+            for p in paths {
+                let path = parse_store_path(store.store_dir(), p)?;
+                if modified.contains(&path) {
+                    targets.push(path);
+                } else {
+                    events.event(Event::Message(format!("{path} is intact")));
+                }
+            }
+        }
+        let caches = self.caches()?;
+        let opts = self.build_options()?;
+        let mut report = RepairReport::default();
+        for path in targets {
+            events.event(Event::Message(format!("repairing {path}")));
+            match self.repair_one(&store, &path, &caches, &opts, events) {
+                Ok(how) => {
+                    events.event(Event::Message(format!("repaired {path} from {how}")));
+                    report.repaired.push(path);
+                }
+                Err(why) => report.failed.push((path, why)),
+            }
+        }
+        Ok(report)
+    }
+
+    fn repair_one(
+        &self,
+        store: &LocalStore,
+        path: &StorePath,
+        caches: &[BinaryCache],
+        opts: &neki_build::BuildOptions,
+        events: &dyn EventSink,
+    ) -> Result<String, String> {
+        let mut problems = Vec::new();
+        for cache in caches {
+            let tmp = store.temp_entry();
+            match cache.fetch_into(store, path, tmp.path()) {
+                Ok(true) => match store.replace_contents(path, tmp.path()) {
+                    Ok(()) => return Ok(format!("cache {}", cache.url)),
+                    Err(e) => problems.push(format!("{}: {e}", cache.url)),
+                },
+                Ok(false) => {}
+                Err(e) => problems.push(format!("{}: {e}", cache.url)),
+            }
+        }
+        let deriver = store
+            .query_path_info(path)
+            .map_err(|e| e.to_string())?
+            .and_then(|info| info.deriver)
+            .filter(|drv| store.is_valid_path(drv).unwrap_or(false));
+        if let Some(drv) = deriver {
+            let rebuilt = (|| -> Result<()> {
+                let outputs = store
+                    .read_derivation(&drv)?
+                    .output_paths(store.store_dir())?;
+                let output = outputs
+                    .iter()
+                    .find(|(_, p)| *p == path)
+                    .map(|(name, _)| name.clone())
+                    .ok_or_else(|| Error::Run(format!("{drv} doesn't build {path}")))?;
+                let tmp = store.temp_entry();
+                neki_build::build_into(store, &drv, &output, tmp.path(), opts, &|event| {
+                    forward(events, event)
+                })?;
+                store
+                    .replace_contents(path, tmp.path())
+                    .map_err(|e| match e {
+                        neki_store::Error::HashMismatch { .. } => Error::Run(format!(
+                            "building {drv} again didn't give the same bytes ({e})"
+                        )),
+                        e => e.into(),
+                    })?;
+                Ok(())
+            })();
+            match rebuilt {
+                Ok(()) => return Ok(format!("building {drv} again")),
+                Err(e) => problems.push(e.to_string()),
+            }
+        }
+        if problems.is_empty() {
+            problems
+                .push("no binary cache has it, and there is no derivation to build it from".into());
+        }
+        Err(problems.join("; "))
+    }
+
     /// Delete unreachable paths (with `delete_older_than`, after deleting
     /// old profile generations).
     pub fn gc(&self, opts: &GcOptions) -> Result<GcResult> {
@@ -864,6 +959,24 @@ pub fn parse_store_path(store_dir: &StoreDir, s: &str) -> Result<StorePath> {
         store_dir.parse_path(Path::new(s))?
     } else {
         StorePath::parse(s)?
+    })
+}
+
+/// What [`Neki::repair`] did.
+#[derive(Debug, Default)]
+pub struct RepairReport {
+    pub repaired: Vec<StorePath>,
+    /// Paths that couldn't be repaired, and why.
+    pub failed: Vec<(StorePath, String)>,
+}
+
+/// Pass a builder event on to `events`.
+fn forward(events: &dyn EventSink, event: neki_build::BuildEvent) {
+    events.event(match event {
+        neki_build::BuildEvent::Started { drv } => Event::BuildStarted { drv },
+        neki_build::BuildEvent::Log { drv, line } => Event::BuildLog { drv, line },
+        neki_build::BuildEvent::Finished { drv, success } => Event::BuildFinished { drv, success },
+        neki_build::BuildEvent::Substituted { path } => Event::Substituted { path },
     })
 }
 

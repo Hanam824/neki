@@ -186,10 +186,20 @@ impl BinaryCache {
                 return Ok(false);
             }
         }
-        let Some(reader) = self.get(&narinfo.url)? else {
+        let Some(mut nar) = self.nar(&narinfo)? else {
             return Ok(false);
         };
-        let mut nar: Box<dyn Read> = match narinfo.compression.as_str() {
+        store.import_nar(&narinfo.info, &mut nar)?;
+        done.insert(path.clone());
+        Ok(true)
+    }
+
+    /// The (decompressed) NAR that `narinfo` describes, if the cache has it.
+    fn nar(&self, narinfo: &NarInfo) -> Result<Option<Box<dyn Read>>> {
+        let Some(reader) = self.get(&narinfo.url)? else {
+            return Ok(None);
+        };
+        Ok(Some(match narinfo.compression.as_str() {
             "none" | "" => reader,
             "zstd" => Box::new(
                 zstd::stream::read::Decoder::new(reader)
@@ -200,9 +210,24 @@ impl BinaryCache {
                     "unsupported compression {other:?}"
                 )));
             }
+        }))
+    }
+
+    /// Unpack the cache's copy of the valid path `path` into the new
+    /// location `dest` (for repairing it), after checking its signature.
+    /// Returns false if the cache doesn't have it.
+    pub fn fetch_into(&self, store: &LocalStore, path: &StorePath, dest: &Path) -> Result<bool> {
+        self.check_store_dir(store.store_dir())?;
+        let Some(narinfo) = self.query(store.store_dir(), path)? else {
+            return Ok(false);
         };
-        store.import_nar(&narinfo.info, &mut nar)?;
-        done.insert(path.clone());
+        if !narinfo.is_trusted(store.store_dir(), &self.trusted_keys) {
+            return Err(Error::Untrusted(path.to_string()));
+        }
+        let Some(mut nar) = self.nar(&narinfo)? else {
+            return Ok(false);
+        };
+        neki_nar::restore(&mut io::BufReader::new(&mut nar), dest)?;
         Ok(true)
     }
 

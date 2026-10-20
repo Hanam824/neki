@@ -421,3 +421,98 @@ fn file_packages_are_stable_from_the_first_build() {
     assert_eq!(first, second);
     assert!(env.location(&first[0]).join("src/neki.lock").is_file());
 }
+
+/// Overwrite a file inside a store path (store files are read-only).
+fn tamper(path: &Path) {
+    neki_platform::fs::set_readonly(path, false).unwrap();
+    fs::write(path, "tampered").unwrap();
+}
+
+#[test]
+fn repair_rebuilds_or_downloads_modified_paths() {
+    let env = Env::new();
+    let greeter = env
+        .neki
+        .build_file(
+            &env.root.join("pkgs/default.neki"),
+            Some("greeter"),
+            &NullSink,
+        )
+        .unwrap()
+        .remove(0);
+    let program = env.location(&greeter).join(if cfg!(windows) {
+        "bin/greet.cmd"
+    } else {
+        "bin/greet"
+    });
+    let original = fs::read(&program).unwrap();
+
+    // Rebuilt from its derivation.
+    tamper(&program);
+    assert_eq!(env.neki.verify().unwrap(), std::slice::from_ref(&greeter));
+    let report = env.neki.repair(&[], &NullSink).unwrap();
+    assert_eq!(
+        report.repaired,
+        std::slice::from_ref(&greeter),
+        "{:?}",
+        report.failed
+    );
+    assert_eq!(fs::read(&program).unwrap(), original);
+    assert!(env.neki.verify().unwrap().is_empty());
+    assert!(fs::metadata(&program).unwrap().permissions().readonly());
+
+    // Downloaded from a binary cache, which is tried first.
+    let key = env.neki.cache_keygen("repair-1").unwrap();
+    let key_file = env.root.join("key");
+    fs::write(&key_file, key.to_text()).unwrap();
+    let cache = format!(
+        "file://{}",
+        env.root
+            .join("cache")
+            .display()
+            .to_string()
+            .replace('\\', "/")
+    );
+    env.neki
+        .cache_push(&cache, &[greeter.to_string()], Some(&key_file))
+        .unwrap();
+    let neki = Neki::new(Config {
+        substituters: vec![cache],
+        trusted_public_keys: vec![key.public().to_string()],
+        ..env.neki.config().clone()
+    });
+    tamper(&program);
+    let messages = std::sync::Mutex::new(Vec::new());
+    struct Collect<'a>(&'a std::sync::Mutex<Vec<String>>);
+    impl EventSink for Collect<'_> {
+        fn event(&self, event: Event) {
+            if let Event::Message(m) = event {
+                self.0.lock().unwrap().push(m);
+            }
+        }
+    }
+    let report = neki
+        .repair(&[greeter.to_string()], &Collect(&messages))
+        .unwrap();
+    assert_eq!(report.repaired, std::slice::from_ref(&greeter));
+    assert!(
+        messages
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|m| m.contains("from cache"))
+    );
+    assert_eq!(fs::read(&program).unwrap(), original);
+
+    // Added by hand: nothing to repair it from.
+    let added = env.neki.store_add(&env.root.join("app/main.txt")).unwrap();
+    tamper(&env.location(&added));
+    let report = env.neki.repair(&[], &NullSink).unwrap();
+    assert!(report.repaired.is_empty());
+    assert_eq!(report.failed.len(), 1);
+    assert!(
+        report.failed[0].1.contains("no derivation"),
+        "{:?}",
+        report.failed
+    );
+}

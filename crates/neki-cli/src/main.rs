@@ -189,6 +189,9 @@ enum StoreCommand {
     Roots,
     /// Check that store contents match their recorded hashes.
     Verify,
+    /// Fix modified paths (these, or every one `verify` reports) from a
+    /// binary cache or by building them again.
+    Repair { paths: Vec<String> },
     /// Delete store paths that are not reachable from any GC root.
     Gc {
         /// Only show what would be deleted.
@@ -405,7 +408,7 @@ fn run(cli: Cli) -> Result<ExitCode> {
             Output::new(value, json)
         }
         Command::Profile(cmd) => profile(&neki, cmd, &events)?,
-        Command::Store(cmd) => store(&neki, cmd, cli.json)?,
+        Command::Store(cmd) => store(&neki, cmd, cli.json, &events)?,
         Command::Hash(cmd) => {
             let hash = match cmd {
                 HashCommand::Path { path } => neki.hash_path(&path)?,
@@ -563,7 +566,12 @@ fn path_info_json(neki: &Neki, info: &PathInfo) -> Value {
     })
 }
 
-fn store(neki: &Neki, cmd: StoreCommand, json_output: bool) -> Result<Output> {
+fn store(
+    neki: &Neki,
+    cmd: StoreCommand,
+    json_output: bool,
+    events: &dyn EventSink,
+) -> Result<Output> {
     let full = |p: &StorePath| {
         neki.config()
             .store_dir
@@ -651,6 +659,26 @@ fn store(neki: &Neki, cmd: StoreCommand, json_output: bool) -> Result<Output> {
                 ""
             };
             Output::new(text, json!({ "modified": paths }))
+        }
+        StoreCommand::Repair { paths } => {
+            let report = neki.repair(&paths, events)?;
+            let repaired: Vec<String> = report.repaired.iter().map(full).collect();
+            let failed: Vec<Value> = report
+                .failed
+                .iter()
+                .map(|(p, why)| json!({ "path": full(p), "reason": why }))
+                .collect();
+            if !report.failed.is_empty() && !json_output {
+                for (path, why) in &report.failed {
+                    eprintln!("cannot repair {}: {why}", full(path));
+                }
+                bail!("{} paths could not be repaired", report.failed.len());
+            }
+            let mut lines: Vec<String> = repaired.iter().map(|p| format!("repaired {p}")).collect();
+            if lines.is_empty() {
+                lines.push("nothing to repair".into());
+            }
+            Output::lines(lines, json!({ "repaired": repaired, "failed": failed }))
         }
         StoreCommand::Gc {
             dry_run,
