@@ -183,14 +183,24 @@ rec {
 
   # Install an npm project from its `package-lock.json` (v2 or v3): every
   # package is downloaded by its locked integrity hash; `bin/<name>` runs
-  # `main` with node. Packages that need install scripts aren't supported.
+  # `main` with node. Platform-specific packages (with `os`/`cpu` lists, like
+  # `@esbuild/darwin-x64`) are installed only on their platform. Install
+  # scripts aren't run.
   buildNpmPackage = { name, src, nodejs, main ? "index.js", lockFile ? src + "/package-lock.json" }:
     let
       lock = builtins.fromJSON (builtins.readFile lockFile);
       entries = map (key: { inherit key; value = lock.packages.${key}; }) (builtins.attrNames lock.packages);
+      npmOs = if isDarwin then "darwin" else if isWindows then "win32" else "linux";
+      npmCpu = if builtins.match "aarch64-.*" system != null then "arm64" else "x64";
+      # npm's rule: `value` must be among the plain entries (if there are
+      # any) and not among the `!`-negated ones.
+      allows = list: value:
+        let plain = builtins.filter (v: builtins.substring 0 1 v != "!") list;
+        in (plain == [ ] || builtins.elem value plain) && !(builtins.elem "!${value}" list);
       wanted = builtins.filter (e:
         e.key != "" && e.value ? resolved && e.value ? integrity
-        && !(e.value.dev or false) && !(e.value.optional or false)) entries;
+        && !(e.value.dev or false) && !(e.value.link or false)
+        && allows (e.value.os or [ ]) npmOs && allows (e.value.cpu or [ ]) npmCpu) entries;
       module = e: unpack {
         name = cleanName "npm-${baseNameOf e.key}-${e.value.version}";
         src = fetchurl { url = e.value.resolved; hash = e.value.integrity; };
