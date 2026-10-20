@@ -5,7 +5,7 @@ mod gc;
 mod local;
 mod references;
 
-pub use gc::{GcOptions, GcResult, Root};
+pub use gc::{GcOptions, GcResult, Root, TempRoot};
 pub use local::{EntryKind, LocalStore, TempEntry, copy_tree, file_hash, nar_hash};
 pub use references::scan_references;
 

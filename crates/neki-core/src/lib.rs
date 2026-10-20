@@ -450,20 +450,26 @@ impl Neki {
     }
 
     /// Environment with `packages` (`<input>.<package>`) available, using
-    /// `project`'s inputs, or the registry outside projects.
+    /// `project`'s inputs, or the registry outside projects. The garbage
+    /// collector keeps it until the returned [`AdHocShell`] is dropped.
     pub fn shell(
         &self,
         project: Option<&Project>,
         packages: &[String],
         events: &dyn EventSink,
-    ) -> Result<ShellEnv> {
+    ) -> Result<AdHocShell> {
         let store = self.store()?;
         let _gc = store.gc_guard()?;
         let env = self.environment(&store, "shell-env", project, packages, events)?;
-        Ok(ShellEnv {
-            vars: BTreeMap::from([("NEKI_SHELL".to_string(), packages.join(" "))]),
-            path_prepend: vec![store.store_dir().to_path(&env).join("bin")],
-            hook: None,
+        // Taken before the GC guard is released, so there's no gap.
+        let root = store.add_temp_root(&env)?;
+        Ok(AdHocShell {
+            env: ShellEnv {
+                vars: BTreeMap::from([("NEKI_SHELL".to_string(), packages.join(" "))]),
+                path_prepend: vec![store.store_dir().to_path(&env).join("bin")],
+                hook: None,
+            },
+            _root: root,
         })
     }
 
@@ -842,6 +848,14 @@ impl Neki {
         server.run(&store, key.as_ref());
         Ok(())
     }
+}
+
+/// An ad-hoc environment, kept from the garbage collector while this value
+/// lives (and never after this process ends).
+#[derive(Debug)]
+pub struct AdHocShell {
+    pub env: ShellEnv,
+    _root: neki_store::TempRoot,
 }
 
 /// A path given as `<hash>-<name>` or as its full location in the store.

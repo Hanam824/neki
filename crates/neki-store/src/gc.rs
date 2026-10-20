@@ -37,6 +37,22 @@ pub struct Root {
     pub link: Option<PathBuf>,
 }
 
+/// Directory in the state dir holding one locked file per temporary root.
+const TEMP_ROOTS: &str = "temproots";
+
+/// A temporary GC root; see [`LocalStore::add_temp_root`].
+#[derive(Debug)]
+pub struct TempRoot {
+    _file: fs::File,
+    path: PathBuf,
+}
+
+impl Drop for TempRoot {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
 /// Name of the directory in the store that holds one hard link per
 /// distinct file content (see [`LocalStore::optimise`]).
 const LINKS: &str = ".links";
@@ -98,6 +114,67 @@ impl LocalStore {
         .collect()
     }
 
+    /// Keep `path` (and what it refers to) from the garbage collector until
+    /// the returned guard is dropped or this process ends, e.g. while an
+    /// ad-hoc shell runs. Nothing outlives the process, even after a crash.
+    pub fn add_temp_root(&self, path: &StorePath) -> Result<TempRoot> {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let dir = self.state_dir().join(TEMP_ROOTS);
+        fs::create_dir_all(&dir).map_err(at(&dir))?;
+        // The path is in the name: Windows doesn't let others read a locked file.
+        let file_path = dir.join(format!(
+            "{}-{}-{path}",
+            std::process::id(),
+            COUNTER.fetch_add(1, Ordering::Relaxed)
+        ));
+        let file = fs::File::create(&file_path).map_err(at(&file_path))?;
+        file.lock().map_err(at(&file_path))?;
+        Ok(TempRoot {
+            _file: file,
+            path: file_path,
+        })
+    }
+
+    /// The paths of the temporary roots whose process still runs (holds its
+    /// lock); with `clean`, the files of the others are deleted.
+    fn temp_roots(&self, clean: bool) -> Result<Vec<StorePath>> {
+        let dir = self.state_dir().join(TEMP_ROOTS);
+        let Ok(entries) = fs::read_dir(&dir) else {
+            return Ok(Vec::new());
+        };
+        let mut paths = Vec::new();
+        for entry in entries {
+            let file_path = entry.map_err(at(&dir))?.path();
+            let name = file_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            let Some(path) = name
+                .splitn(3, '-')
+                .nth(2)
+                .and_then(|p| StorePath::parse(p).ok())
+            else {
+                continue;
+            };
+            let Ok(file) = fs::File::open(&file_path) else {
+                continue;
+            };
+            match file.try_lock() {
+                Err(fs::TryLockError::WouldBlock) => paths.push(path),
+                // Its process is gone.
+                Ok(()) | Err(fs::TryLockError::Error(_)) => {
+                    drop(file);
+                    if clean {
+                        let _ = fs::remove_file(&file_path);
+                    }
+                }
+            }
+        }
+        Ok(paths)
+    }
+
     /// Whether an indirect root's link still points at its path.
     fn root_alive(&self, root: &Root) -> bool {
         match &root.link {
@@ -112,13 +189,14 @@ impl LocalStore {
 
     /// Every valid path not reachable from a GC root.
     pub fn dead_paths(&self) -> Result<BTreeSet<StorePath>> {
-        let roots: Vec<StorePath> = self
+        let mut roots: Vec<StorePath> = self
             .roots()?
             .into_iter()
             .filter(|r| self.root_alive(r))
             .map(|r| r.path)
-            .filter(|p| self.is_valid_path(p).unwrap_or(false))
             .collect();
+        roots.extend(self.temp_roots(false)?);
+        roots.retain(|p| self.is_valid_path(p).unwrap_or(false));
         let live = self.closure(&roots)?;
         Ok(db::valid_paths(&self.db())?
             .into_iter()
@@ -139,6 +217,7 @@ impl LocalStore {
                     self.remove_root(&root.name)?;
                 }
             }
+            self.temp_roots(true)?;
         }
         let dead = self.dead_paths()?;
         for path in &dead {

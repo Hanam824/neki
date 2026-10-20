@@ -94,7 +94,9 @@ enum Command {
     Shell {
         #[arg(required = true)]
         packages: Vec<String>,
-        /// Print a script that sets up the environment instead.
+        /// Print a script that sets up the environment instead. (The
+        /// environment is only kept from the garbage collector while a
+        /// shell started by `neki shell` runs.)
         #[arg(long, value_enum, value_name = "SHELL")]
         print_env: Option<ShellKind>,
     },
@@ -370,13 +372,14 @@ fn run(cli: Cli) -> Result<ExitCode> {
             print_env,
         } => {
             let project = neki.find_project(&dir)?;
-            let env = neki.shell(project.as_ref(), &packages, &events)?;
+            // Kept from the garbage collector while the shell runs.
+            let shell = neki.shell(project.as_ref(), &packages, &events)?;
             match print_env {
-                Some(shell) => Output::new(
-                    neki_core::render_activation(&env, shell.into()),
-                    env_json(&env),
+                Some(kind) => Output::new(
+                    neki_core::render_activation(&shell.env, kind.into()),
+                    env_json(&shell.env),
                 ),
-                None => return Ok(exit_code(neki.spawn_shell(&env)?)),
+                None => return Ok(exit_code(neki.spawn_shell(&shell.env)?)),
             }
         }
         Command::Lock { update } => {
