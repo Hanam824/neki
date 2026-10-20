@@ -264,14 +264,19 @@ rec {
       ++ [ (launcher { inherit name; program = node; script = "lib/${name}/${main}"; }) ]
     );
 
-  # A Python program with pure-Python dependencies given as wheels
-  # (`{ url; sha256; }`, e.g. from PyPI's JSON API); `bin/<name>` runs
-  # `main` with the dependencies on `PYTHONPATH`.
+  # A Python program with its dependencies given as wheels (`{ url;
+  # sha256; }`): a list, or, for packages with native code, an attribute
+  # set by system (`scripts/python-wheels.py` writes one from PyPI).
+  # `bin/<name>` runs `main` with the dependencies on `PYTHONPATH`.
   buildPythonApplication = { name, src, python, wheels ? [ ], main ? "main.py" }:
     let
+      wheelList =
+        if builtins.isAttrs wheels
+        then wheels.${system} or (throw "${name}: no wheels for ${system}")
+        else wheels;
       wheel = w: unpack {
         name = cleanName "wheel-${baseNameOf w.url}";
-        src = fetchurl w;
+        src = fetchurl { inherit (w) url sha256; };
         stripRoot = "0";
         binDirs = "";
       };
@@ -279,7 +284,7 @@ rec {
     in
     assemble name (
       [ { path = "lib/${name}"; inherit src; } { path = "lib/site-packages/.keep"; text = ""; } ]
-      ++ map (w: { path = "lib/site-packages"; src = wheel w; }) wheels
+      ++ map (w: { path = "lib/site-packages"; src = wheel w; }) wheelList
       ++ [ (launcher {
         inherit name program;
         script = "lib/${name}/${main}";
