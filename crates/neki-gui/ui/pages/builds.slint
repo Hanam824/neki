@@ -1,0 +1,99 @@
+import { Button, ListView, Palette } from "std-widgets.slint";
+import { AppState, BuildItem } from "../state.slint";
+import { Colors, SectionTitle } from "../components.slint";
+
+// Every derivation built or downloaded since the app started, with the
+// selected one's build log.
+export component BuildsPage inherits VerticalLayout {
+    spacing: 12px;
+
+    HorizontalLayout {
+        spacing: 8px;
+        SectionTitle {
+            text: "Builds";
+            font-size: 20px;
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+        }
+        Button {
+            text: "Cancel build";
+            enabled: AppState.busy;
+            clicked => {
+                AppState.cancel-build();
+            }
+        }
+    }
+
+    HorizontalLayout {
+        spacing: 16px;
+        vertical-stretch: 1;
+
+        VerticalLayout {
+            width: 320px;
+            spacing: 6px;
+            if AppState.builds.length == 0: Text {
+                text: "Nothing built yet. Build a project from the Projects page.";
+                wrap: word-wrap;
+                opacity: 0.7;
+            }
+            ListView {
+                vertical-stretch: 1;
+                for item[i] in AppState.builds: Rectangle {
+                    height: 44px;
+                    border-radius: 6px;
+                    background: i == AppState.selected-build ? Palette.selection-background : area.has-hover ? Palette.alternate-background : transparent;
+                    area := TouchArea {
+                        clicked => {
+                            AppState.select-build(i);
+                        }
+                    }
+                    HorizontalLayout {
+                        padding: 8px;
+                        spacing: 8px;
+                        Text {
+                            width: 16px;
+                            vertical-alignment: center;
+                            text: item.status == "running" ? "…" : item.status == "failed" ? "✗" : item.status == "downloaded" ? "↓" : "✓";
+                            color: item.status == "failed" ? Colors.error : item.status == "running" ? Palette.foreground : Colors.ok;
+                        }
+                        VerticalLayout {
+                            Text {
+                                text: item.name;
+                                overflow: elide;
+                                font-weight: 600;
+                                color: i == AppState.selected-build ? Palette.selection-foreground : Palette.foreground;
+                            }
+                            Text {
+                                text: item.status;
+                                font-size: 11px;
+                                opacity: 0.7;
+                                color: i == AppState.selected-build ? Palette.selection-foreground : Palette.foreground;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+            background: Palette.alternate-background;
+            border-radius: 6px;
+            VerticalLayout {
+                padding: 8px;
+                if AppState.selected-build < 0: Text {
+                    text: "Select a build to see its log.";
+                    opacity: 0.7;
+                }
+                ListView {
+                    for line in AppState.build-log: Text {
+                        text: line;
+                        font-family: "monospace";
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+}

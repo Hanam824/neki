@@ -1,10 +1,9 @@
-import { Button, LineEdit } from "std-widgets.slint";
-import { AppState } from "../state.slint";
-import { KeyValueList, SectionTitle } from "../components.slint";
+import { Button, ComboBox, LineEdit, ListView, Palette } from "std-widgets.slint";
+import { AppState, GenerationItem } from "../state.slint";
+import { Colors, KeyValueList, SectionTitle } from "../components.slint";
 
 export component ProfilesPage inherits VerticalLayout {
     spacing: 12px;
-    alignment: start;
 
     SectionTitle {
         text: "Profiles";
@@ -20,9 +19,20 @@ export component ProfilesPage inherits VerticalLayout {
         LineEdit {
             width: 200px;
             text <=> AppState.profile-name;
+            accepted(text) => {
+                AppState.profile-action("history", text, "");
+            }
+        }
+        if AppState.profiles.length > 1: ComboBox {
+            width: 160px;
+            model: AppState.profiles;
+            selected(value) => {
+                AppState.profile-name = value;
+                AppState.profile-action("history", value, "");
+            }
         }
         Button {
-            text: "Show generations";
+            text: "Load";
             enabled: !AppState.busy;
             clicked => {
                 AppState.profile-action("history", AppState.profile-name, "");
@@ -30,7 +40,7 @@ export component ProfilesPage inherits VerticalLayout {
         }
         Button {
             text: "Roll back";
-            enabled: !AppState.busy;
+            enabled: !AppState.busy && AppState.generations.length > 1;
             clicked => {
                 AppState.profile-action("rollback", AppState.profile-name, "");
             }
@@ -45,7 +55,7 @@ export component ProfilesPage inherits VerticalLayout {
         }
         LineEdit {
             width: 320px;
-            placeholder-text: "pkgs.nodejs pkgs.python";
+            placeholder-text: "pkgs.nodejs pkgs.ripgrep";
             text <=> AppState.profile-packages;
         }
         Button {
@@ -55,10 +65,96 @@ export component ProfilesPage inherits VerticalLayout {
                 AppState.profile-action("install", AppState.profile-name, AppState.profile-packages);
             }
         }
+        Button {
+            text: "Remove";
+            enabled: !AppState.busy && AppState.profile-packages != "";
+            clicked => {
+                AppState.profile-action("remove", AppState.profile-name, AppState.profile-packages);
+            }
+        }
     }
-    SectionTitle { text: "Generations"; }
-    KeyValueList {
-        items: AppState.generations;
-        empty-text: "No generations loaded.";
+    if AppState.current-link != "": Text {
+        text: "Add " + AppState.current-link + " to PATH to use the current generation's programs.";
+        wrap: word-wrap;
+        opacity: 0.7;
+    }
+
+    HorizontalLayout {
+        spacing: 16px;
+        vertical-stretch: 1;
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 6px;
+            SectionTitle { text: "Generations"; }
+            if AppState.generations.length == 0: Text {
+                text: "No generations. Install packages to create one.";
+                opacity: 0.7;
+            }
+            ListView {
+                vertical-stretch: 1;
+                for g in AppState.generations: HorizontalLayout {
+                    padding: 4px;
+                    spacing: 8px;
+                    Text {
+                        text: (g.current ? "● " : "   ") + "#" + g.number;
+                        width: 60px;
+                        font-weight: g.current ? 700 : 400;
+                        vertical-alignment: center;
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        Text {
+                            text: g.packages == "" ? "(empty)" : g.packages;
+                            wrap: word-wrap;
+                        }
+                        Text {
+                            text: g.created;
+                            font-size: 11px;
+                            opacity: 0.6;
+                        }
+                    }
+                    Button {
+                        text: "Switch";
+                        enabled: !AppState.busy && !g.current;
+                        clicked => {
+                            AppState.profile-action("switch", AppState.profile-name, "" + g.number);
+                        }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            width: 320px;
+            spacing: 8px;
+            alignment: start;
+            SectionTitle { text: "Compare generations"; }
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: start;
+                a := LineEdit {
+                    width: 90px;
+                    placeholder-text: "from #";
+                    input-type: number;
+                }
+                b := LineEdit {
+                    width: 90px;
+                    placeholder-text: "to #";
+                    input-type: number;
+                }
+                Button {
+                    text: "Compare";
+                    enabled: a.text != "" && b.text != "";
+                    clicked => {
+                        AppState.diff-generations(a.text.to-float(), b.text.to-float());
+                    }
+                }
+            }
+            KeyValueList {
+                items: AppState.generation-diff;
+                empty-text: "Pick two generations to see what changed.";
+            }
+        }
     }
 }

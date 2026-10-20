@@ -7,10 +7,11 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use neki_core::{Config, Event, EventSink, GcOptions, MANIFEST_FILE, Manifest, Neki, Project};
+use neki_core::{Config, Event, EventSink, MANIFEST_FILE, Manifest, Neki, Project};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
 use crate::registry::Registry;
+use crate::views;
 use crate::{AppState, AppWindow, KeyValue, LogEntry, ProjectDetail, ProjectItem};
 
 /// Oldest activity entries are dropped beyond this.
@@ -26,6 +27,8 @@ struct State {
     neki: Arc<Neki>,
     registry: Registry,
     entries: Vec<Entry>,
+    /// Re-checks which projects changed since their last build.
+    _watcher: slint::Timer,
 }
 
 type Shared = Rc<RefCell<State>>;
@@ -33,6 +36,7 @@ type Shared = Rc<RefCell<State>>;
 pub fn install(ui: &AppWindow) {
     ui.global::<AppState>()
         .set_log(ModelRc::new(VecModel::<LogEntry>::default()));
+    views::install_models(ui);
 
     let registry = match Registry::default_file().map(Registry::load) {
         Some(Ok(registry)) => registry,
@@ -52,9 +56,11 @@ pub fn install(ui: &AppWindow) {
         neki,
         registry,
         entries: Vec::new(),
+        _watcher: slint::Timer::default(),
     }));
     refresh(&mut state.borrow_mut(), ui);
     connect(ui, &state);
+    watch(ui, &state);
 }
 
 fn connect(ui: &AppWindow, state: &Shared) {
@@ -148,12 +154,54 @@ fn connect(ui: &AppWindow, state: &Shared) {
             },
         );
     }));
+    app.on_pick_folder(handler!(|ui, _state| {
+        let picked = rfd::FileDialog::new()
+            .set_title("Choose a project folder")
+            .pick_folder();
+        if let Some(folder) = picked {
+            ui.global::<AppState>()
+                .set_new_project_path(folder.display().to_string().into());
+        }
+    }));
+    app.on_open_dev_shell(handler!(|ui, state| {
+        let state = state.borrow();
+        let Some(project) = selected_project(&state, &ui) else {
+            return;
+        };
+        let label = format!("Opening the dev shell of {}", project.manifest.project.name);
+        spawn_task(
+            &ui,
+            &state.neki,
+            label,
+            move |neki, events| neki.open_dev_shell(&project, events),
+            |ui, ()| push_log(ui, Level::Ok, "Opened a terminal with the dev shell"),
+        );
+    }));
+    app.on_select_build(handler!(|ui, _state, index: i32| {
+        views::select_build(&ui, index);
+    }));
+    app.on_cancel_build(handler!(|ui, state| {
+        state.borrow().neki.cancel();
+        push_log(&ui, Level::Info, "Cancelling the build…");
+    }));
     app.on_store_action(handler!(|ui, state, action: SharedString| {
-        store_action(&ui, &state.borrow().neki, &action);
+        views::store_action(&ui, &state.borrow().neki, &action);
+    }));
+    app.on_load_store(handler!(|ui, state| {
+        views::load_store(&ui, &state.borrow().neki);
+    }));
+    app.on_filter_store(handler!(|ui, _state, text: SharedString| {
+        views::filter_store(&ui, &text);
+    }));
+    app.on_select_path(handler!(|ui, state, index: i32| {
+        views::select_path(&ui, &state.borrow().neki, index);
+    }));
+    app.on_why_depends(handler!(|ui, state, target: SharedString| {
+        views::why_depends(&ui, &state.borrow().neki, &target);
     }));
     app.on_profile_action(handler!(
         |ui, state, action: SharedString, profile: SharedString, packages: SharedString| {
-            profile_action(
+            views::profile_action(
                 &ui,
                 &state.borrow().neki,
                 &action,
@@ -162,10 +210,85 @@ fn connect(ui: &AppWindow, state: &Shared) {
             );
         }
     ));
+    app.on_diff_generations(handler!(|ui, _state, a: i32, b: i32| {
+        views::diff_generations(&ui, a, b);
+    }));
     app.on_clear_log(handler!(|ui, _state| {
         ui.global::<AppState>()
             .set_log(ModelRc::new(VecModel::<LogEntry>::default()));
     }));
+}
+
+/// Every few seconds, update each project's build state in the list, so
+/// edits made outside the app show up as "changed since the last build".
+fn watch(ui: &AppWindow, state: &Shared) {
+    let weak = ui.as_weak();
+    let shared = Rc::downgrade(state);
+    state.borrow()._watcher.start(
+        slint::TimerMode::Repeated,
+        std::time::Duration::from_secs(3),
+        move || {
+            let (Some(ui), Some(state)) = (weak.upgrade(), shared.upgrade()) else {
+                return;
+            };
+            let Ok(state) = state.try_borrow() else {
+                return;
+            };
+            let projects = ui.global::<AppState>().get_projects();
+            for (i, entry) in state.entries.iter().enumerate() {
+                if let Some(mut item) = projects.row_data(i) {
+                    let build_state = build_state(&entry.root);
+                    if item.build_state != build_state {
+                        item.build_state = build_state.into();
+                        projects.set_row_data(i, item);
+                    }
+                }
+            }
+        },
+    );
+}
+
+/// Whether the project at `root` was built (it has a `result` link) and
+/// whether any of its files changed after that.
+fn build_state(root: &Path) -> &'static str {
+    let Ok(link) = std::fs::symlink_metadata(root.join("result")) else {
+        return "not built";
+    };
+    let Ok(built) = link.modified() else {
+        return "built";
+    };
+    if newest_change(root, root, &mut 0).is_some_and(|t| t > built) {
+        "changed since the last build"
+    } else {
+        "built"
+    }
+}
+
+/// The newest modification time of the project's files, skipping build
+/// results, version control data and dependency folders; at most a few
+/// thousand files are looked at.
+fn newest_change(root: &Path, dir: &Path, seen: &mut usize) -> Option<std::time::SystemTime> {
+    const SKIP: &[&str] = &[".git", "target", "node_modules", "result"];
+    let mut newest = None;
+    for entry in std::fs::read_dir(dir).ok()?.flatten() {
+        *seen += 1;
+        if *seen > 5000 {
+            break;
+        }
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if SKIP.contains(&name.as_ref()) || (dir == root && name.starts_with("result-")) {
+            continue;
+        }
+        let Ok(meta) = entry.metadata() else { continue };
+        let time = if meta.is_dir() {
+            newest_change(root, &entry.path(), seen)
+        } else {
+            meta.modified().ok()
+        };
+        newest = newest.max(time);
+    }
+    newest
 }
 
 /// Reload every registered project and redraw the list and the selection.
@@ -296,120 +419,15 @@ fn selected_project(state: &State, ui: &AppWindow) -> Option<Project> {
     }
 }
 
-fn store_action(ui: &AppWindow, neki: &Arc<Neki>, action: &str) {
-    match action {
-        "verify" => spawn_task(
-            ui,
-            neki,
-            "Verifying store",
-            |neki, _| neki.verify(),
-            |ui, modified| {
-                if modified.is_empty() {
-                    push_log(ui, Level::Ok, "All store paths are intact");
-                }
-                for path in modified {
-                    push_log(ui, Level::Error, format!("Modified: {path}"));
-                }
-            },
-        ),
-        "gc" | "gc-dry-run" => {
-            let dry_run = action == "gc-dry-run";
-            spawn_task(
-                ui,
-                neki,
-                "Collecting garbage",
-                move |neki, _| {
-                    neki.gc(&GcOptions {
-                        dry_run,
-                        ..GcOptions::default()
-                    })
-                },
-                move |ui, result| {
-                    let verb = if dry_run {
-                        "would be deleted"
-                    } else {
-                        "deleted"
-                    };
-                    push_log(
-                        ui,
-                        Level::Ok,
-                        format!(
-                            "{} paths {verb}, {} bytes",
-                            result.deleted.len(),
-                            result.bytes_freed
-                        ),
-                    );
-                },
-            );
-        }
-        "optimise" => spawn_task(
-            ui,
-            neki,
-            "Optimising store",
-            |neki, _| neki.optimise(),
-            |ui, saved| push_log(ui, Level::Ok, format!("{saved} bytes saved")),
-        ),
-        _ => {}
-    }
-}
-
-fn profile_action(ui: &AppWindow, neki: &Arc<Neki>, action: &str, profile: String, packages: &str) {
-    let packages: Vec<String> = packages.split_whitespace().map(str::to_string).collect();
-    match action {
-        "history" => spawn_task(
-            ui,
-            neki,
-            format!("Loading generations of {profile}"),
-            move |neki, _| neki.profile_generations(&profile),
-            |ui, generations| {
-                let items = generations
-                    .iter()
-                    .map(|g| {
-                        kv(
-                            format!("#{}", g.number),
-                            format!("{} (created {})", g.path, g.created),
-                        )
-                    })
-                    .collect();
-                ui.global::<AppState>().set_generations(model(items));
-            },
-        ),
-        "rollback" => spawn_task(
-            ui,
-            neki,
-            format!("Rolling back {profile}"),
-            move |neki, _| neki.profile_rollback(&profile),
-            |ui, generation| {
-                push_log(
-                    ui,
-                    Level::Ok,
-                    format!("Switched to generation {}", generation.number),
-                )
-            },
-        ),
-        "install" => spawn_task(
-            ui,
-            neki,
-            format!("Installing into {profile}"),
-            move |neki, events| neki.profile_install(&profile, &packages, events),
-            |ui, generation| {
-                push_log(
-                    ui,
-                    Level::Ok,
-                    format!("Created generation {}", generation.number),
-                );
-                ui.global::<AppState>()
-                    .set_profile_packages(SharedString::new());
-            },
-        ),
-        _ => {}
-    }
-}
-
 /// Run `work` on a worker thread, then `done` with its result on the UI
 /// thread. One task runs at a time; `busy` disables the action buttons.
-fn spawn_task<T, W, D>(ui: &AppWindow, neki: &Arc<Neki>, label: impl Into<String>, work: W, done: D)
-where
+pub fn spawn_task<T, W, D>(
+    ui: &AppWindow,
+    neki: &Arc<Neki>,
+    label: impl Into<String>,
+    work: W,
+    done: D,
+) where
     T: Send + 'static,
     W: FnOnce(&Neki, &dyn EventSink) -> neki_core::Result<T> + Send + 'static,
     D: FnOnce(&AppWindow, T) + Send + 'static,
@@ -448,9 +466,14 @@ struct UiSink {
 
 impl EventSink for UiSink {
     fn event(&self, event: Event) {
+        let tracked = event.clone();
+        let _ = self
+            .ui
+            .upgrade_in_event_loop(move |ui| views::track_build(&ui, tracked));
         let (level, text) = match event {
             Event::BuildStarted { drv } => (Level::Info, format!("Building {drv}")),
-            Event::BuildLog { line, .. } => (Level::Info, line),
+            // Shown on the Builds page, not in the activity log.
+            Event::BuildLog { .. } => return,
             Event::BuildFinished { drv, success: true } => (Level::Ok, format!("Built {drv}")),
             Event::BuildFinished {
                 drv,
@@ -468,14 +491,14 @@ impl EventSink for UiSink {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum Level {
+pub enum Level {
     Info,
     Ok,
     Error,
 }
 
 /// Add an entry at the top of the activity log.
-fn push_log(ui: &AppWindow, level: Level, text: impl Into<SharedString>) {
+pub fn push_log(ui: &AppWindow, level: Level, text: impl Into<SharedString>) {
     let level = match level {
         Level::Info => "info",
         Level::Ok => "ok",
@@ -509,12 +532,29 @@ fn show_settings(ui: &AppWindow, neki: &Neki, registry: &Registry) {
         || "(not saved)".to_string(),
         |file| file.display().to_string(),
     );
+    let keys = if config.trusted_public_keys.is_empty() {
+        "(none)".to_string()
+    } else {
+        config.trusted_public_keys.join(" ")
+    };
+    let registry_entries: Vec<String> = config
+        .registry
+        .iter()
+        .map(|(name, url)| format!("{name} = {url}"))
+        .collect();
+    let settings_file = neki_core::user_config_dir().map_or_else(
+        || "(no config directory)".to_string(),
+        |dir| dir.join("config.toml").display().to_string(),
+    );
     let items = vec![
         kv("Store directory", config.store_dir.display().to_string()),
         kv("State directory", config.state_dir.display().to_string()),
         kv("System", config.system.as_str()),
         kv("Parallel builds", config.max_jobs.to_string()),
         kv("Substituters", substituters),
+        kv("Trusted keys", keys),
+        kv("Registry", registry_entries.join("\n")),
+        kv("Settings file", settings_file),
         kv("Project list", project_list),
         kv("Version", env!("CARGO_PKG_VERSION")),
     ];
@@ -527,11 +567,13 @@ fn project_item(entry: &Entry) -> ProjectItem {
             name: project.manifest.project.name.as_str().into(),
             status: entry.root.display().to_string().into(),
             ok: true,
+            build_state: build_state(&entry.root).into(),
         },
         Err(err) => ProjectItem {
             name: folder_name(&entry.root).into(),
             status: err.as_str().into(),
             ok: false,
+            build_state: SharedString::new(),
         },
     }
 }
@@ -571,11 +613,14 @@ fn detail(entry: &Entry) -> ProjectDetail {
         .iter()
         .map(|(name, package)| {
             let build: Vec<String> = package.build.iter().map(|argv| argv.join(" ")).collect();
+            let recipe = match &package.file {
+                Some(file) => format!("defined in {file}"),
+                None => list(&build),
+            };
             let value = format!(
-                "src: {}\ninputs: {}\nbuild: {}",
+                "src: {}\ninputs: {}\nbuild: {recipe}",
                 package.src,
                 list(&package.build_inputs),
-                list(&build)
             );
             kv(name.as_str(), value)
         })
@@ -649,13 +694,13 @@ fn list(items: &[String]) -> String {
     }
 }
 
-fn kv(key: impl Into<SharedString>, value: impl Into<SharedString>) -> KeyValue {
+pub fn kv(key: impl Into<SharedString>, value: impl Into<SharedString>) -> KeyValue {
     KeyValue {
         key: key.into(),
         value: value.into(),
     }
 }
 
-fn model<T: Clone + 'static>(items: Vec<T>) -> ModelRc<T> {
+pub fn model<T: Clone + 'static>(items: Vec<T>) -> ModelRc<T> {
     ModelRc::new(VecModel::from(items))
 }

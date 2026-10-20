@@ -12,9 +12,14 @@ path = "src/main.rs"
 
 [dependencies]
 neki-core.workspace = true
+rfd.workspace = true
 serde.workspace = true
 slint.workspace = true
 toml.workspace = true
+
+[dev-dependencies]
+# Must match the slint version: runs the UI without a window system.
+i-slint-backend-testing = "=1.13.1"
 
 [build-dependencies]
 slint-build.workspace = true

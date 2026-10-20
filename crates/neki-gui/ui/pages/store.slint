@@ -1,22 +1,105 @@
-import { Button } from "std-widgets.slint";
+import { Button, LineEdit, ListView, Palette, ScrollView, TabWidget } from "std-widgets.slint";
 import { AppState } from "../state.slint";
-import { SectionTitle } from "../components.slint";
+import { Colors, KeyValueList, SectionTitle } from "../components.slint";
+
+component PathDetailView inherits TabWidget {
+    Tab {
+        title: "Details";
+        ScrollView {
+            VerticalLayout {
+                padding: 12px;
+                spacing: 8px;
+                alignment: start;
+                Text {
+                    text: AppState.path-detail.path;
+                    wrap: word-wrap;
+                    font-weight: 600;
+                }
+                KeyValueList {
+                    items: [
+                        { key: "NAR size", value: AppState.path-detail.nar-size },
+                        { key: "Closure size", value: AppState.path-detail.closure-size },
+                        { key: "NAR hash", value: AppState.path-detail.nar-hash },
+                        { key: "Deriver", value: AppState.path-detail.deriver },
+                    ];
+                }
+                SectionTitle { text: "References"; }
+                if AppState.path-detail.references.length == 0: Text {
+                    text: "(none)";
+                    opacity: 0.6;
+                }
+                for reference in AppState.path-detail.references: Text {
+                    text: reference;
+                    font-size: 12px;
+                }
+            }
+        }
+    }
+    Tab {
+        title: "Dependency tree";
+        ListView {
+            for line in AppState.path-detail.tree: Text {
+                text: line;
+                font-family: "monospace";
+                font-size: 12px;
+            }
+        }
+    }
+    Tab {
+        title: "Why depends";
+        VerticalLayout {
+            padding: 12px;
+            spacing: 8px;
+            Text {
+                text: "Why does this path depend on…";
+                wrap: word-wrap;
+            }
+            HorizontalLayout {
+                spacing: 8px;
+                LineEdit {
+                    placeholder-text: "<hash>-<name> of another path";
+                    text <=> AppState.why-target;
+                    accepted(text) => {
+                        AppState.why-depends(text);
+                    }
+                }
+                Button {
+                    text: "Show";
+                    enabled: !AppState.busy && AppState.why-target != "";
+                    clicked => {
+                        AppState.why-depends(AppState.why-target);
+                    }
+                }
+            }
+            ListView {
+                vertical-stretch: 1;
+                for chain in AppState.why-chains: Text {
+                    text: chain;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+}
 
 export component StorePage inherits VerticalLayout {
     spacing: 12px;
-    alignment: start;
 
-    SectionTitle {
-        text: "Store";
-        font-size: 20px;
-    }
-    Text {
-        text: "Check and clean up the store at " + AppState.store-dir + ". Results appear in Activity.";
-        wrap: word-wrap;
-    }
     HorizontalLayout {
         spacing: 8px;
-        alignment: start;
+        SectionTitle {
+            text: "Store";
+            font-size: 20px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        Button {
+            text: "Reload";
+            enabled: !AppState.busy;
+            clicked => {
+                AppState.load-store();
+            }
+        }
         Button {
             text: "Verify";
             enabled: !AppState.busy;
@@ -25,14 +108,14 @@ export component StorePage inherits VerticalLayout {
             }
         }
         Button {
-            text: "Garbage collect (dry run)";
+            text: "Preview garbage collection";
             enabled: !AppState.busy;
             clicked => {
-                AppState.store-action("gc-dry-run");
+                AppState.store-action("gc-preview");
             }
         }
         Button {
-            text: "Garbage collect";
+            text: "Collect garbage";
             enabled: !AppState.busy;
             clicked => {
                 AppState.store-action("gc");
@@ -43,6 +126,108 @@ export component StorePage inherits VerticalLayout {
             enabled: !AppState.busy;
             clicked => {
                 AppState.store-action("optimise");
+            }
+        }
+    }
+    Text {
+        text: AppState.store-dir + (AppState.store-summary != "" ? "  ·  " + AppState.store-summary : "");
+        opacity: 0.7;
+        overflow: elide;
+    }
+
+    HorizontalLayout {
+        spacing: 16px;
+        vertical-stretch: 1;
+
+        VerticalLayout {
+            width: 340px;
+            spacing: 6px;
+            LineEdit {
+                placeholder-text: "Search paths";
+                text <=> AppState.store-filter;
+                edited(text) => {
+                    AppState.filter-store(text);
+                }
+            }
+            ListView {
+                vertical-stretch: 1;
+                for item[i] in AppState.store-paths: Rectangle {
+                    height: 40px;
+                    border-radius: 6px;
+                    background: i == AppState.selected-path ? Palette.selection-background : area.has-hover ? Palette.alternate-background : transparent;
+                    area := TouchArea {
+                        clicked => {
+                            AppState.select-path(i);
+                        }
+                    }
+                    HorizontalLayout {
+                        padding: 6px;
+                        spacing: 8px;
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            Text {
+                                text: item.name;
+                                overflow: elide;
+                                font-weight: 600;
+                                color: i == AppState.selected-path ? Palette.selection-foreground : Palette.foreground;
+                            }
+                            Text {
+                                text: item.hash;
+                                font-size: 10px;
+                                opacity: 0.6;
+                                overflow: elide;
+                                color: i == AppState.selected-path ? Palette.selection-foreground : Palette.foreground;
+                            }
+                        }
+                        Text {
+                            text: item.size;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                            color: i == AppState.selected-path ? Palette.selection-foreground : Palette.foreground;
+                        }
+                    }
+                }
+            }
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 8px;
+            if AppState.gc-summary != "": Rectangle {
+                background: Palette.alternate-background;
+                border-radius: 6px;
+                height: 160px;
+                VerticalLayout {
+                    padding: 8px;
+                    spacing: 4px;
+                    Text {
+                        text: AppState.gc-summary;
+                        font-weight: 600;
+                    }
+                    ListView {
+                        for item in AppState.gc-preview: HorizontalLayout {
+                            spacing: 8px;
+                            Text {
+                                text: item.value;
+                                width: 80px;
+                                horizontal-alignment: right;
+                                font-size: 12px;
+                            }
+                            Text {
+                                text: item.key;
+                                font-size: 12px;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                }
+            }
+            if AppState.selected-path < 0: Text {
+                text: AppState.store-paths.length == 0 ? "Press Reload to list the store." : "Select a path to see its details.";
+                opacity: 0.7;
+            }
+            if AppState.selected-path >= 0: PathDetailView {
+                vertical-stretch: 1;
             }
         }
     }
