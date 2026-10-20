@@ -132,6 +132,12 @@ fn run(
     opts: &BuildOptions,
     events: Events,
 ) -> Result<BTreeSet<StorePath>> {
+    for (drv, waits_for) in &plan.todo {
+        events(BuildEvent::Planned {
+            drv: drv.clone(),
+            waits_for: waits_for.iter().cloned().collect(),
+        });
+    }
     let mut state = State::default();
     for (drv, waits_for) in &plan.todo {
         if waits_for.is_empty() {

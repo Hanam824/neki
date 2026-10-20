@@ -38,6 +38,28 @@ export struct BuildItem {
     status: string,
 }
 
+export struct GraphNode {
+    drv: string,
+    name: string,
+    // "waiting", "running", "built" or "failed".
+    status: string,
+    x: length,
+    y: length,
+}
+
+export struct InputRow {
+    name: string,
+    url: string,
+}
+
+export struct PackageRow {
+    name: string,
+    src: string,
+    // Space-separated.
+    build-inputs: string,
+    file: string,
+}
+
 export struct PathItem {
     name: string,
     hash: string,
@@ -80,6 +102,18 @@ export global AppState {
     in-out property <string> new-project-path;
     // A project to switch to once unsaved changes are dealt with.
     in-out property <int> pending-select: -1;
+    // 0 = overview, 1 = neki.toml, 2 = form.
+    in-out property <int> project-tab: 0;
+    // The Form tab: fields of the editor text, applied back with apply-form.
+    in-out property <string> form-name;
+    in-out property <string> form-description;
+    in-out property <[InputRow]> form-inputs;
+    // Space-separated.
+    in-out property <string> form-dev-packages;
+    // One KEY=value per line.
+    in-out property <string> form-dev-env;
+    in-out property <[PackageRow]> form-packages;
+    in-out property <string> form-error;
 
     // Builds
     in-out property <[BuildItem]> builds;
@@ -87,6 +121,13 @@ export global AppState {
     in-out property <[string]> build-log;
     // Whether the last build failed and can be started again.
     in-out property <bool> can-retry: false;
+    // 0 = log, 1 = graph.
+    in-out property <int> builds-tab: 0;
+    in-out property <[GraphNode]> graph-nodes;
+    // Path commands for every line between nodes.
+    in-out property <string> graph-edges;
+    in-out property <float> graph-width;
+    in-out property <float> graph-height;
 
     // Store
     in-out property <string> store-dir;
@@ -121,10 +162,18 @@ export global AppState {
     callback build-project(string);
     callback lock-project();
     callback open-dev-shell();
+    callback load-form();
+    // Index (-1 adds a row), name, URL.
+    callback form-input-changed(int, string, string);
+    callback form-input-removed(int);
+    // Index, src, build inputs, file.
+    callback form-package-changed(int, string, string, string);
+    callback apply-form();
 
     callback select-build(int);
     callback cancel-build();
     callback retry-build();
+    callback select-build-drv(string);
 
     // "verify", "repair", "gc-preview", "gc" or "optimise".
     callback store-action(string);

@@ -990,6 +990,9 @@ pub struct RepairReport {
 /// Pass a builder event on to `events`.
 fn forward(events: &dyn EventSink, event: neki_build::BuildEvent) {
     events.event(match event {
+        neki_build::BuildEvent::Planned { drv, waits_for } => {
+            Event::BuildPlanned { drv, waits_for }
+        }
         neki_build::BuildEvent::Started { drv } => Event::BuildStarted { drv },
         neki_build::BuildEvent::Log { drv, line } => Event::BuildLog { drv, line },
         neki_build::BuildEvent::Finished { drv, success } => Event::BuildFinished { drv, success },

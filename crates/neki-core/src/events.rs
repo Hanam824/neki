@@ -3,6 +3,12 @@ use neki_hash::StorePath;
 /// Progress reported by long-running operations.
 #[derive(Debug, Clone)]
 pub enum Event {
+    /// `drv` will be built after the derivations in `waits_for`; sent for
+    /// every derivation of a build before the first one starts.
+    BuildPlanned {
+        drv: StorePath,
+        waits_for: Vec<StorePath>,
+    },
     BuildStarted {
         drv: StorePath,
     },

@@ -153,7 +153,7 @@ Nix-design/
 | **D5** | Generations list and diff, GC preview (needs M6) | ✅ (also install/remove/switch) |
 | **D6** | "Open dev shell" in a terminal window (needs M5; launching a terminal is OS-specific, so it goes through `neki-platform`) | ✅ |
 
-Of the extras above, the project list shows each project's build state ("not built", "built", "changed since the last build"), re-checked every few seconds. The Builds page can also retry the last build after a failure. The Store page also repairs modified paths. Not done (see Future): the tray icon, a syntax-highlighted / structured `neki.toml` editor, and a graphical DAG view.
+Of the extras above, the project list shows each project's build state ("not built", "built", "changed since the last build"), re-checked every few seconds. The Builds page can also retry the last build after a failure. The Store page also repairs modified paths. The Builds page draws the build graph (derivations by depth, coloured by status; click one for its log), and projects have a Form tab that edits the common `neki.toml` fields while keeping comments and layout (build commands stay in the text editor). Not done (see Future): the tray icon and a syntax-highlighted `neki.toml` editor.
 
 ---
 
@@ -167,8 +167,8 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 - Windows symlinks via Developer Mode (P5). Until then, unpacking a NAR that contains a symlink fails on Windows with a clear error
 - Executable bit on Windows (P10): Windows has no such bit, so NARs made there mark nothing executable, and a tree with executables hashes differently than on Unix. Fix: carry the bit from archive metadata (tar/zip) straight into the NAR in the unpacker. (Packages are per-system anyway, so this only matters for sources shared between OSes)
 - Tray icon with build notifications: needs `libappindicator`/StatusNotifier on Linux, which isn't available everywhere
-- Syntax-highlighted or form-based `neki.toml` editor and a graphical build DAG: Slint has no code editor widget; the DAG is UI work for later
-- Language adapters: npm packages with install scripts, optional/platform-specific npm dependencies, Python dependencies with native code (sdists), and Cargo `git` dependencies aren't supported
+- Syntax-highlighted `neki.toml` editor: Slint has no code editor widget
+- Language adapters: npm packages with install scripts; Python packages built from source (sdists), because Python on Windows needs MSVC to compile them (prebuilt platform wheels work); Cargo `git` dependencies whose `Cargo.toml` inherits fields from their workspace (`version.workspace = true`), which `cargo vendor` would normalize
 - MSI/EXE installers, registry, services, drivers (P6)
 - LLVM-mingw stdenv, MSVC as an impure input (P7)
 - ACL / `chattr` hard immutability (P8)

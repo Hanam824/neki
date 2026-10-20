@@ -2,6 +2,18 @@ import { Button, ComboBox, LineEdit, ListView, Palette, ScrollView, TabWidget, T
 import { AppState } from "../state.slint";
 import { Colors, KeyValueList, SectionTitle } from "../components.slint";
 
+// A labelled field of the Form tab.
+component FormRow inherits HorizontalLayout {
+    in property <string> label;
+    spacing: 8px;
+    Text {
+        text: root.label;
+        width: 100px;
+        vertical-alignment: center;
+    }
+    @children
+}
+
 component ProjectDetailView inherits VerticalLayout {
     spacing: 10px;
 
@@ -62,6 +74,12 @@ component ProjectDetailView inherits VerticalLayout {
 
     TabWidget {
         vertical-stretch: 1;
+        current-index <=> AppState.project-tab;
+        changed current-index => {
+            if (self.current-index == 2) {
+                AppState.load-form();
+            }
+        }
 
         Tab {
             title: "Overview";
@@ -116,6 +134,165 @@ component ProjectDetailView inherits VerticalLayout {
                         enabled: AppState.manifest-dirty;
                         clicked => {
                             AppState.reload-manifest();
+                        }
+                    }
+                    Button {
+                        text: "Save";
+                        primary: true;
+                        enabled: AppState.manifest-dirty;
+                        clicked => {
+                            AppState.save-manifest(AppState.manifest-text);
+                        }
+                    }
+                }
+            }
+        }
+
+        Tab {
+            title: "Form";
+            VerticalLayout {
+                padding: 8px;
+                spacing: 8px;
+                ScrollView {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        padding: 4px;
+                        spacing: 6px;
+                        alignment: start;
+                        SectionTitle { text: "Project"; }
+                        FormRow {
+                            label: "Name";
+                            LineEdit { text <=> AppState.form-name; }
+                        }
+                        FormRow {
+                            label: "Description";
+                            LineEdit { text <=> AppState.form-description; }
+                        }
+
+                        SectionTitle { text: "Inputs"; }
+                        for input[i] in AppState.form-inputs: HorizontalLayout {
+                            spacing: 6px;
+                            LineEdit {
+                                width: 140px;
+                                text: input.name;
+                                placeholder-text: "name";
+                                edited(text) => {
+                                    AppState.form-input-changed(i, text, input.url);
+                                }
+                            }
+                            LineEdit {
+                                horizontal-stretch: 1;
+                                text: input.url;
+                                placeholder-text: "github:owner/repo or path:../dir";
+                                edited(text) => {
+                                    AppState.form-input-changed(i, input.name, text);
+                                }
+                            }
+                            Button {
+                                text: "Remove";
+                                clicked => {
+                                    AppState.form-input-removed(i);
+                                }
+                            }
+                        }
+                        HorizontalLayout {
+                            alignment: start;
+                            Button {
+                                text: "Add input";
+                                clicked => {
+                                    AppState.form-input-changed(-1, "", "");
+                                }
+                            }
+                        }
+
+                        SectionTitle { text: "Dev shell"; }
+                        FormRow {
+                            label: "Packages";
+                            LineEdit {
+                                text <=> AppState.form-dev-packages;
+                                placeholder-text: "pkgs.jq pkgs.ripgrep";
+                            }
+                        }
+                        FormRow {
+                            label: "Environment";
+                            TextEdit {
+                                height: 70px;
+                                text <=> AppState.form-dev-env;
+                            }
+                        }
+                        Text {
+                            text: "One KEY=value per line.";
+                            font-size: 11px;
+                            opacity: 0.7;
+                        }
+
+                        SectionTitle { text: "Packages"; }
+                        for pkg[i] in AppState.form-packages: VerticalLayout {
+                            spacing: 4px;
+                            Text {
+                                text: pkg.name;
+                                font-weight: 600;
+                            }
+                            FormRow {
+                                label: "Source";
+                                LineEdit {
+                                    text: pkg.src;
+                                    edited(text) => {
+                                        AppState.form-package-changed(i, text, pkg.build-inputs, pkg.file);
+                                    }
+                                }
+                            }
+                            FormRow {
+                                label: "Build inputs";
+                                LineEdit {
+                                    text: pkg.build-inputs;
+                                    placeholder-text: "pkgs.rustc pkgs.cargo";
+                                    edited(text) => {
+                                        AppState.form-package-changed(i, pkg.src, text, pkg.file);
+                                    }
+                                }
+                            }
+                            FormRow {
+                                label: "File";
+                                LineEdit {
+                                    text: pkg.file;
+                                    placeholder-text: "package.neki (empty: build commands)";
+                                    edited(text) => {
+                                        AppState.form-package-changed(i, pkg.src, pkg.build-inputs, text);
+                                    }
+                                }
+                            }
+                        }
+                        Text {
+                            text: "Build commands are edited in the neki.toml tab.";
+                            font-size: 11px;
+                            opacity: 0.7;
+                        }
+                    }
+                }
+                if AppState.form-error != "": Text {
+                    text: AppState.form-error;
+                    color: Colors.error;
+                    wrap: word-wrap;
+                }
+                HorizontalLayout {
+                    spacing: 8px;
+                    Text {
+                        text: AppState.manifest-dirty ? "Unsaved changes" : "";
+                        vertical-alignment: center;
+                        opacity: 0.7;
+                        horizontal-stretch: 1;
+                    }
+                    Button {
+                        text: "Reload";
+                        clicked => {
+                            AppState.load-form();
+                        }
+                    }
+                    Button {
+                        text: "Apply to neki.toml";
+                        clicked => {
+                            AppState.apply-form();
                         }
                     }
                     Button {

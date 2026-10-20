@@ -14,7 +14,7 @@ It follows [Nix](https://nixos.org/guides/how-nix-works/)'s design: packages liv
 - **Language adapters** that build Cargo, npm and Python projects offline from their lock files.
 - **Profiles** with generations and rollback, for tools you want everywhere.
 - **Binary caches**: sign and push builds, serve a store over HTTP, and download instead of building.
-- **Neki Desktop App** to manage projects, watch builds, browse the store and manage profiles.
+- **Neki Desktop App** to manage and edit projects, watch builds and their dependency graph, browse the store and manage profiles.
 
 ## Build from source
 
@@ -131,7 +131,7 @@ pkgs = "github:Hanam824/neki?dir=pkgs"
 
 ## The package set
 
-`pkgs/default.neki` holds the packages; `pkgs/sources.json` their versions, URLs and SHA-256 hashes for `aarch64-darwin`, `x86_64-darwin`, `x86_64-linux`, `aarch64-linux` and `x86_64-windows`. To update it, run `scripts/update-pkgs.py` (it uses `gh` if installed). `pkgs/lib.neki` has the helpers and adapters: `buildRustPackage` (from `Cargo.lock`), `buildNpmPackage` (from `package-lock.json`) and `buildPythonApplication` (from wheels).
+`pkgs/default.neki` holds the packages; `pkgs/sources.json` their versions, URLs and SHA-256 hashes for `aarch64-darwin`, `x86_64-darwin`, `x86_64-linux`, `aarch64-linux` and `x86_64-windows`. To update it, run `scripts/update-pkgs.py` (it uses `gh` if installed). `pkgs/lib.neki` has the helpers and adapters: `buildRustPackage` (from `Cargo.lock`, including `git` dependencies), `buildNpmPackage` (from `package-lock.json`, with the platform-specific packages for the current system) and `buildPythonApplication` (from wheels). Wheels with native code differ per system; `scripts/python-wheels.py name==version …` picks one per system from PyPI and prints them as a `.neki` file, as in `examples/python-tool`.
 
 ## Downloads
 
