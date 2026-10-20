@@ -1,0 +1,227 @@
+# Helpers for writing packages, and adapters that build projects of other
+# package managers from their lock files, fetching every dependency as a
+# fixed-output download first, so the build itself runs offline.
+#
+#   lib = import ./lib.neki builtins.currentSystem;
+
+system:
+
+let
+  isWindows = builtins.match ".*-windows" system != null;
+  isDarwin = builtins.match ".*-darwin" system != null;
+  isLinux = builtins.match ".*-linux" system != null;
+
+  optionalAttrs = cond: attrs: if cond then attrs else { };
+
+  # A store path name from anything (URLs may contain characters names can't).
+  cleanName = name:
+    builtins.replaceStrings [ "%" "?" "&" ":" "~" "@" "/" " " "!" ] [ "-" "-" "-" "-" "-" "-" "-" "-" "-" ] name;
+
+  # `bin/<name>` for a program, with `.exe` on Windows.
+  exeName = name: if isWindows then "${name}.exe" else name;
+
+  toWindowsPath = builtins.replaceStrings [ "/" ] [ "\\" ];
+in
+rec {
+  inherit system isWindows isDarwin isLinux optionalAttrs cleanName exeName;
+
+  # Download a file whose hash is known: `sha256` (hex) or `hash` (SRI).
+  fetchurl = { url, sha256 ? null, hash ? null, name ? baseNameOf url }:
+    derivation {
+      inherit system url;
+      name = cleanName name;
+      builder = "builtin:fetchurl";
+      outputHash = if hash != null then hash else sha256;
+      outputHashAlgo = if hash != null then "" else "sha256";
+    };
+
+  # Unpack an archive (see `builtin:unpack`): `stripRoot` ("auto" by
+  # default), `subdirs`, `binDirs`, or `install` for a bare program.
+  unpack = args@{ name, src, ... }:
+    derivation ({ inherit system; builder = "builtin:unpack"; stripRoot = "auto"; } // args);
+
+  # A prebuilt release from `sources.json` for the current system.
+  prebuilt = pname: info: overrides:
+    let
+      source = info.systems.${system}
+        or (throw "${pname} ${info.version} is not available for ${system}");
+      file = fetchurl { inherit (source) url sha256; };
+      install = optionalAttrs (info ? install) { install = "bin/${exeName info.install}"; };
+    in
+    unpack ({ name = "${pname}-${info.version}"; src = file; } // install // overrides);
+
+  # Build a tree from store paths and text (see `builtin:assemble`):
+  # entries are { path; src; } or { path; text; executable ? false; }.
+  assemble = name: entries:
+    derivation {
+      inherit system name;
+      builder = "builtin:assemble";
+      entries = builtins.toJSON entries;
+    };
+
+  # Run argument lists in order, without a shell (see `builtin:run`).
+  runCommands = { name, commands, buildInputs ? [ ], src ? null, env ? { } }:
+    derivation ({
+      inherit system name buildInputs;
+      builder = "builtin:run";
+      commands = builtins.toJSON commands;
+    } // optionalAttrs (src != null) { inherit src; } // env);
+
+  # A `bin/<name>` launcher (a POSIX script, or a `.cmd` file on Windows)
+  # running `program` on the file at `script` (relative to the package),
+  # with `PYTHONPATH`-style variables set to directories in the package.
+  launcher = { name, program, script, dirVars ? { } }:
+    let
+      vars = builtins.attrNames dirVars;
+    in
+    if isWindows then {
+      path = "bin/${name}.cmd";
+      text = "@echo off\r\n"
+        + builtins.concatStringsSep "" (map (v: "set \"${v}=%~dp0..\\${toWindowsPath dirVars.${v}}\"\r\n") vars)
+        + "\"${program}\" \"%~dp0..\\${toWindowsPath script}\" %*\r\n";
+    } else {
+      path = "bin/${name}";
+      executable = true;
+      text = "#!/bin/sh\n"
+        + "dir=\"$(cd \"$(dirname \"$0\")/..\" && pwd)\"\n"
+        + builtins.concatStringsSep "" (map (v: "export ${v}=\"$dir/${dirVars.${v}}\"\n") vars)
+        + "exec \"${program}\" \"$dir/${script}\" \"$@\"\n";
+    };
+
+  # The Rust toolchain: rustc, cargo and the standard library (plus, on
+  # Windows, the GNU target's own linker) merged into one sysroot.
+  rustToolchain = info:
+    let
+      source = info.systems.${system} or (throw "rust is not available for ${system}");
+      component = c: {
+        path = "";
+        src = unpack {
+          name = "${c.component}-${info.version}";
+          src = fetchurl { inherit (c) url sha256; };
+          stripRoot = "1";
+          subdirs = if c.component == "rust-std" then "rust-std-${source.target}" else c.component;
+        };
+      };
+    in
+    (assemble "rust-${info.version}" (map component source.components)) // { inherit (source) target; };
+
+  # Build a Cargo project offline from its `Cargo.lock`: every crate is
+  # downloaded by its locked checksum into a vendor directory first.
+  # Outside Windows, `zig` provides the C linker Rust needs.
+  buildRustPackage = { name, src, rust, zig ? null, cargoLock ? src + "/Cargo.lock" }:
+    let
+      lock = builtins.fromTOML (builtins.readFile cargoLock);
+      registry = "registry+https://github.com/rust-lang/crates.io-index";
+      crates = builtins.filter (p: (p.source or "") == registry) (lock.package or [ ]);
+      crate = p: unpack {
+        name = "crate-${p.name}-${p.version}";
+        src = fetchurl {
+          name = "${p.name}-${p.version}.crate";
+          url = "https://static.crates.io/crates/${p.name}/${p.name}-${p.version}.crate";
+          sha256 = p.checksum;
+        };
+        stripRoot = "1";
+        binDirs = "";
+      };
+      vendor = assemble "${name}-vendor" ([ { path = ".keep"; text = ""; } ] ++ builtins.concatMap (p: [
+        { path = "${p.name}-${p.version}"; src = crate p; }
+        {
+          path = "${p.name}-${p.version}/.cargo-checksum.json";
+          text = builtins.toJSON { files = { }; package = p.checksum; };
+        }
+      ]) crates);
+      zigTargets = {
+        aarch64-apple-darwin = "aarch64-macos";
+        x86_64-apple-darwin = "x86_64-macos";
+        x86_64-unknown-linux-gnu = "x86_64-linux-gnu";
+        aarch64-unknown-linux-gnu = "aarch64-linux-gnu";
+      };
+      # zig cc as the linker, minus the flags it doesn't take.
+      linker = assemble "zig-cc" [ {
+        path = "bin/zig-cc";
+        executable = true;
+        text = ''
+          #!/bin/sh
+          # Drop `-arch <arch>`: the target says it.
+          skip=
+          for arg; do
+            shift
+            if [ -n "$skip" ]; then skip=; continue; fi
+            if [ "$arg" = "-arch" ]; then skip=1; continue; fi
+            set -- "$@" "$arg"
+          done
+          exec "${zig}/zig" cc -target ${zigTargets.${rust.target}} "$@"
+        '';
+      } ];
+      targetVar = builtins.replaceStrings [ "-" ] [ "_" ] (lib_upper rust.target);
+      linkerEnv = optionalAttrs (zig != null && !isWindows) {
+        "CARGO_TARGET_${targetVar}_LINKER" = "${linker}/bin/zig-cc";
+      };
+    in
+    runCommands {
+      inherit name src;
+      buildInputs = [ rust ];
+      commands = [ [
+        "cargo" "install" "--path" "." "--root" "\${out}" "--locked" "--offline"
+        "--config" "source.crates-io.replace-with=\"vendored\""
+        "--config" "source.vendored.directory=\"${vendor}\""
+        # Keep the build directory's path out of the program.
+        "--config" "build.rustflags=[\"--remap-path-prefix=\${NEKI_BUILD_TOP}=/build\"]"
+      ] ];
+      # Stripping needs LLVM tools that the minimal toolchain doesn't have.
+      env = linkerEnv // { CARGO_INCREMENTAL = "0"; CARGO_PROFILE_RELEASE_STRIP = "false"; };
+    };
+
+  lib_upper = s:
+    builtins.replaceStrings
+      [ "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z" ]
+      [ "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z" ]
+      s;
+
+  # Install an npm project from its `package-lock.json` (v2 or v3): every
+  # package is downloaded by its locked integrity hash; `bin/<name>` runs
+  # `main` with node. Packages that need install scripts aren't supported.
+  buildNpmPackage = { name, src, nodejs, main ? "index.js", lockFile ? src + "/package-lock.json" }:
+    let
+      lock = builtins.fromJSON (builtins.readFile lockFile);
+      entries = map (key: { inherit key; value = lock.packages.${key}; }) (builtins.attrNames lock.packages);
+      wanted = builtins.filter (e:
+        e.key != "" && e.value ? resolved && e.value ? integrity
+        && !(e.value.dev or false) && !(e.value.optional or false)) entries;
+      module = e: unpack {
+        name = cleanName "npm-${baseNameOf e.key}-${e.value.version}";
+        src = fetchurl { url = e.value.resolved; hash = e.value.integrity; };
+        stripRoot = "1";
+        binDirs = "";
+      };
+      node = if isWindows then "${nodejs}/node.exe" else "${nodejs}/bin/node";
+    in
+    assemble name (
+      [ { path = "lib/${name}"; inherit src; } ]
+      ++ map (e: { path = "lib/${name}/${e.key}"; src = module e; }) wanted
+      ++ [ (launcher { inherit name; program = node; script = "lib/${name}/${main}"; }) ]
+    );
+
+  # A Python program with pure-Python dependencies given as wheels
+  # (`{ url; sha256; }`, e.g. from PyPI's JSON API); `bin/<name>` runs
+  # `main` with the dependencies on `PYTHONPATH`.
+  buildPythonApplication = { name, src, python, wheels ? [ ], main ? "main.py" }:
+    let
+      wheel = w: unpack {
+        name = cleanName "wheel-${baseNameOf w.url}";
+        src = fetchurl w;
+        stripRoot = "0";
+        binDirs = "";
+      };
+      program = if isWindows then "${python}/python.exe" else "${python}/bin/python3";
+    in
+    assemble name (
+      [ { path = "lib/${name}"; inherit src; } { path = "lib/site-packages/.keep"; text = ""; } ]
+      ++ map (w: { path = "lib/site-packages"; src = wheel w; }) wheels
+      ++ [ (launcher {
+        inherit name program;
+        script = "lib/${name}/${main}";
+        dirVars = { PYTHONPATH = "lib/site-packages"; };
+      }) ]
+    );
+}

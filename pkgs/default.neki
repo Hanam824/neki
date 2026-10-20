@@ -1,0 +1,30 @@
+# The Neki package set: prebuilt releases of common tools, for macOS
+# (Apple Silicon and Intel), Linux (x86_64, aarch64) and Windows (x86_64).
+#
+# Versions, URLs and SHA-256 hashes are in `sources.json`, generated from
+# upstream's published checksums by `scripts/update-pkgs.py`.
+#
+# Use it as an input:   pkgs = { url = "github:Hanam824/neki?dir=pkgs" }
+# and name packages as  pkgs.nodejs, pkgs.ripgrep, …
+
+let
+  lib = import ./lib.neki builtins.currentSystem;
+  sources = builtins.fromJSON (builtins.readFile ./sources.json);
+  release = name: overrides: lib.prebuilt name sources.${name} overrides;
+  plain = name: release name { };
+  # Every package in sources.json that needs nothing special.
+  generic = builtins.listToAttrs (map (name: { inherit name; value = plain name; })
+    (builtins.filter (n: !(builtins.elem n [ "rust" "cmake" "jdk" ])) (builtins.attrNames sources)));
+in
+generic // {
+  inherit lib;
+
+  rust = lib.rustToolchain sources.rust;
+
+  # The macOS releases are app bundles.
+  cmake = release "cmake" (lib.optionalAttrs lib.isDarwin { binDirs = "CMake.app/Contents/bin"; });
+  jdk = release "jdk" (lib.optionalAttrs lib.isDarwin { binDirs = "Contents/Home/bin"; });
+
+  python = generic.python3;
+  node = generic.nodejs;
+}
