@@ -123,6 +123,9 @@ fn connect(ui: &AppWindow, state: &Shared) {
         };
         start_build(&mut state.borrow_mut(), &ui, project, package.to_string());
     }));
+    app.on_select_build_drv(handler!(|ui, _state, drv: SharedString| {
+        views::select_build_drv(&ui, &drv);
+    }));
     app.on_retry_build(handler!(|ui, state| {
         let last = state.borrow().last_build.clone();
         if let Some((project, package)) = last {
@@ -506,6 +509,8 @@ impl EventSink for UiSink {
             Event::Download { path, done: 0, .. } => (Level::Info, format!("Downloading {path}")),
             Event::Download { .. } => return,
             Event::Substituted { path } => (Level::Ok, format!("Downloaded {path}")),
+            // Shown on the Builds page's graph.
+            Event::BuildPlanned { .. } => return,
             Event::Message(message) => (Level::Info, message),
         };
         let _ = self

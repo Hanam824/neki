@@ -10,7 +10,9 @@ use neki_core::{Event, GcOptions, Generation, Neki, StorePath};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
 use crate::app::{Level, kv, model, push_log, spawn_task};
-use crate::{AppState, AppWindow, BuildItem, GenerationItem, KeyValue, PathDetail, PathItem};
+use crate::{
+    AppState, AppWindow, BuildItem, GenerationItem, GraphNode, KeyValue, PathDetail, PathItem,
+};
 
 /// Build log lines kept per derivation.
 const MAX_LOG_LINES: usize = 5000;
@@ -35,7 +37,24 @@ struct Data {
     shown: Vec<usize>,
     /// The loaded profile's generations.
     generations: Vec<Generation>,
+    /// The derivations of the current (or last) build, for the graph.
+    graph: Vec<GraphEntry>,
 }
+
+/// A derivation in the build graph.
+struct GraphEntry {
+    drv: String,
+    name: String,
+    waits_for: Vec<String>,
+    /// "waiting", "running", "built" or "failed".
+    status: String,
+}
+
+/// Size of a node in the build graph, and the gaps between nodes.
+const NODE_WIDTH: f32 = 190.0;
+const NODE_HEIGHT: f32 = 40.0;
+const GAP_X: f32 = 50.0;
+const GAP_Y: f32 = 14.0;
 
 thread_local! {
     static DATA: RefCell<Data> = RefCell::default();
@@ -114,7 +133,26 @@ pub fn track_build(ui: &AppWindow, event: Event) {
         return;
     };
     match event {
+        Event::BuildPlanned { drv, waits_for } => {
+            with(|d| {
+                // A new build: the previous graph is finished.
+                if d.graph
+                    .iter()
+                    .all(|e| e.status != "waiting" && e.status != "running")
+                {
+                    d.graph.clear();
+                }
+                d.graph.push(GraphEntry {
+                    drv: drv.to_string(),
+                    name: drv.name().trim_end_matches(".drv").to_string(),
+                    waits_for: waits_for.iter().map(ToString::to_string).collect(),
+                    status: "waiting".into(),
+                });
+            });
+            show_graph(ui);
+        }
         Event::BuildStarted { drv } => {
+            set_graph_status(ui, &drv.to_string(), "running");
             let key = drv.to_string();
             let name = drv.name().trim_end_matches(".drv").to_string();
             let index = match build_index(ui, &key) {
@@ -173,8 +211,10 @@ pub fn track_build(ui: &AppWindow, event: Event) {
             }
         }
         Event::BuildFinished { drv, success } => {
+            let status = if success { "built" } else { "failed" };
+            set_graph_status(ui, &drv.to_string(), status);
             if let Some(i) = build_index(ui, &drv.to_string()) {
-                set_status(ui, i, if success { "built" } else { "failed" });
+                set_status(ui, i, status);
             }
         }
         Event::Substituted { path } => {
@@ -192,6 +232,108 @@ pub fn track_build(ui: &AppWindow, event: Event) {
             }
         }
         Event::Download { .. } | Event::Message(_) => {}
+    }
+}
+
+fn set_graph_status(ui: &AppWindow, drv: &str, status: &str) {
+    let changed = with(|d| match d.graph.iter_mut().find(|e| e.drv == drv) {
+        Some(entry) => {
+            entry.status = status.to_string();
+            true
+        }
+        None => false,
+    });
+    if changed {
+        show_graph(ui);
+    }
+}
+
+/// A node's column: how many derivations of the graph it waits for, one
+/// after another (0 for those that wait for none).
+fn depth(graph: &[GraphEntry], index: usize, memo: &mut HashMap<usize, usize>) -> usize {
+    if let Some(&d) = memo.get(&index) {
+        return d;
+    }
+    // Cycles can't happen (hashes), but don't loop if the data is odd.
+    memo.insert(index, 0);
+    let d = graph[index]
+        .waits_for
+        .iter()
+        .filter_map(|w| graph.iter().position(|e| e.drv == *w))
+        .map(|i| depth(graph, i, memo) + 1)
+        .max()
+        .unwrap_or(0);
+    memo.insert(index, d);
+    d
+}
+
+/// Lay out the build graph: inputs on the left, what uses them to the
+/// right; one line from each input to each derivation waiting for it.
+fn graph_layout(graph: &[GraphEntry]) -> (Vec<GraphNode>, String, f32, f32) {
+    let mut memo = HashMap::new();
+    let depths: Vec<usize> = (0..graph.len())
+        .map(|i| depth(graph, i, &mut memo))
+        .collect();
+    let mut columns: Vec<Vec<usize>> = Vec::new();
+    for (i, &d) in depths.iter().enumerate() {
+        if columns.len() <= d {
+            columns.resize(d + 1, Vec::new());
+        }
+        columns[d].push(i);
+    }
+    let mut position = vec![(0.0, 0.0); graph.len()];
+    for (col, members) in columns.iter_mut().enumerate() {
+        members.sort_by(|a, b| graph[*a].name.cmp(&graph[*b].name));
+        for (row, &i) in members.iter().enumerate() {
+            position[i] = (
+                col as f32 * (NODE_WIDTH + GAP_X),
+                row as f32 * (NODE_HEIGHT + GAP_Y),
+            );
+        }
+    }
+    let mut edges = String::new();
+    for (i, entry) in graph.iter().enumerate() {
+        for w in &entry.waits_for {
+            if let Some(j) = graph.iter().position(|e| e.drv == *w) {
+                let (x1, y1) = (
+                    position[j].0 + NODE_WIDTH,
+                    position[j].1 + NODE_HEIGHT / 2.0,
+                );
+                let (x2, y2) = (position[i].0, position[i].1 + NODE_HEIGHT / 2.0);
+                edges.push_str(&format!("M {x1} {y1} L {x2} {y2} "));
+            }
+        }
+    }
+    let nodes = graph
+        .iter()
+        .zip(&position)
+        .map(|(e, (x, y))| GraphNode {
+            drv: e.drv.as_str().into(),
+            name: e.name.as_str().into(),
+            status: e.status.as_str().into(),
+            x: *x,
+            y: *y,
+        })
+        .collect();
+    let width = columns.len() as f32 * (NODE_WIDTH + GAP_X);
+    let height = columns.iter().map(Vec::len).max().unwrap_or(0) as f32 * (NODE_HEIGHT + GAP_Y);
+    (nodes, edges, width, height)
+}
+
+fn show_graph(ui: &AppWindow) {
+    let (nodes, edges, width, height) = with(|d| graph_layout(&d.graph));
+    let app = ui.global::<AppState>();
+    app.set_graph_nodes(model(nodes));
+    app.set_graph_edges(edges.into());
+    app.set_graph_width(width);
+    app.set_graph_height(height);
+}
+
+/// Show the log of the build of `drv` (clicked in the graph).
+pub fn select_build_drv(ui: &AppWindow, drv: &str) {
+    if let Some(index) = build_index(ui, drv) {
+        select_build(ui, index as i32);
+        ui.global::<AppState>().set_builds_tab(0);
     }
 }
 
@@ -708,6 +850,41 @@ mod tests {
                 ("removed".into(), "pkgs.a".into())
             ]
         );
+
+        // The build graph: `app` waits for `lib`, so `lib` is left of it.
+        let lib = StorePath::parse("11111111111111111111111111111111-lib.drv").unwrap();
+        let app_drv = StorePath::parse("22222222222222222222222222222222-app.drv").unwrap();
+        track_build(
+            &ui,
+            Event::BuildPlanned {
+                drv: lib.clone(),
+                waits_for: vec![],
+            },
+        );
+        track_build(
+            &ui,
+            Event::BuildPlanned {
+                drv: app_drv.clone(),
+                waits_for: vec![lib.clone()],
+            },
+        );
+        let nodes: Vec<GraphNode> = app.get_graph_nodes().iter().collect();
+        assert_eq!(nodes.len(), 2);
+        let x = |name: &str| nodes.iter().find(|n| n.name == name).unwrap().x;
+        assert_eq!(x("lib"), 0.0);
+        assert_eq!(x("app"), NODE_WIDTH + GAP_X);
+        assert!(app.get_graph_edges().starts_with("M 190 20 L 240 20"));
+        track_build(&ui, Event::BuildStarted { drv: lib.clone() });
+        let status = |name: &str| {
+            app.get_graph_nodes()
+                .iter()
+                .find(|n| n.name == name)
+                .unwrap()
+                .status
+                .to_string()
+        };
+        assert_eq!(status("lib"), "running");
+        assert_eq!(status("app"), "waiting");
     }
 
     #[test]

@@ -38,6 +38,15 @@ export struct BuildItem {
     status: string,
 }
 
+export struct GraphNode {
+    drv: string,
+    name: string,
+    // "waiting", "running", "built" or "failed".
+    status: string,
+    x: length,
+    y: length,
+}
+
 export struct PathItem {
     name: string,
     hash: string,
@@ -87,6 +96,13 @@ export global AppState {
     in-out property <[string]> build-log;
     // Whether the last build failed and can be started again.
     in-out property <bool> can-retry: false;
+    // 0 = log, 1 = graph.
+    in-out property <int> builds-tab: 0;
+    in-out property <[GraphNode]> graph-nodes;
+    // Path commands for every line between nodes.
+    in-out property <string> graph-edges;
+    in-out property <float> graph-width;
+    in-out property <float> graph-height;
 
     // Store
     in-out property <string> store-dir;
@@ -125,6 +141,7 @@ export global AppState {
     callback select-build(int);
     callback cancel-build();
     callback retry-build();
+    callback select-build-drv(string);
 
     // "verify", "repair", "gc-preview", "gc" or "optimise".
     callback store-action(string);

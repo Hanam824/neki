@@ -1,5 +1,5 @@
-import { Button, ListView, Palette } from "std-widgets.slint";
-import { AppState, BuildItem } from "../state.slint";
+import { Button, ListView, Palette, ScrollView, TabWidget } from "std-widgets.slint";
+import { AppState, BuildItem, GraphNode } from "../state.slint";
 import { Colors, SectionTitle } from "../components.slint";
 
 // Every derivation built or downloaded since the app started, with the
@@ -82,22 +82,93 @@ export component BuildsPage inherits VerticalLayout {
             }
         }
 
-        Rectangle {
+        TabWidget {
             horizontal-stretch: 1;
-            background: Palette.alternate-background;
-            border-radius: 6px;
-            VerticalLayout {
-                padding: 8px;
-                if AppState.selected-build < 0: Text {
-                    text: "Select a build to see its log.";
-                    opacity: 0.7;
+            current-index <=> AppState.builds-tab;
+
+            Tab {
+                title: "Log";
+                Rectangle {
+                    background: Palette.alternate-background;
+                    border-radius: 6px;
+                    VerticalLayout {
+                        padding: 8px;
+                        if AppState.selected-build < 0: Text {
+                            text: "Select a build to see its log.";
+                            opacity: 0.7;
+                        }
+                        ListView {
+                            for line in AppState.build-log: Text {
+                                text: line;
+                                font-family: "monospace";
+                                font-size: 12px;
+                                wrap: word-wrap;
+                            }
+                        }
+                    }
                 }
-                ListView {
-                    for line in AppState.build-log: Text {
-                        text: line;
-                        font-family: "monospace";
-                        font-size: 12px;
+            }
+
+            Tab {
+                title: "Graph";
+                VerticalLayout {
+                    padding: 8px;
+                    spacing: 6px;
+                    if AppState.graph-nodes.length == 0: Text {
+                        text: "The derivations of the next build, and what each waits for, show here.";
                         wrap: word-wrap;
+                        opacity: 0.7;
+                    }
+                    Text {
+                        text: "Inputs on the left. Click a derivation to see its log.";
+                        font-size: 11px;
+                        opacity: 0.7;
+                    }
+                    ScrollView {
+                        viewport-width: AppState.graph-width * 1px + 16px;
+                        viewport-height: AppState.graph-height * 1px + 16px;
+                        Path {
+                            x: 8px;
+                            y: 8px;
+                            width: AppState.graph-width * 1px;
+                            height: AppState.graph-height * 1px;
+                            viewbox-width: AppState.graph-width;
+                            viewbox-height: AppState.graph-height;
+                            commands: AppState.graph-edges;
+                            stroke: Palette.foreground.with-alpha(0.35);
+                            stroke-width: 1.5px;
+                        }
+                        for node in AppState.graph-nodes: Rectangle {
+                            x: node.x + 8px;
+                            y: node.y + 8px;
+                            width: 190px;
+                            height: 40px;
+                            border-radius: 6px;
+                            border-width: 1px;
+                            border-color: node.status == "failed" ? Colors.error : node.status == "built" ? Colors.ok : Palette.border;
+                            background: node.status == "running" ? Palette.accent-background.with-alpha(0.35) : Palette.control-background;
+                            TouchArea {
+                                clicked => {
+                                    AppState.select-build-drv(node.drv);
+                                }
+                            }
+                            VerticalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                alignment: center;
+                                Text {
+                                    text: node.name;
+                                    overflow: elide;
+                                    font-weight: 600;
+                                    font-size: 12px;
+                                }
+                                Text {
+                                    text: node.status;
+                                    font-size: 10px;
+                                    opacity: 0.7;
+                                }
+                            }
+                        }
                     }
                 }
             }
