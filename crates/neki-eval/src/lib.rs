@@ -1,11 +1,25 @@
 //! Evaluator for a subset of the Nix expression language (no nixpkgs
 //! compatibility). Evaluation is lazy: lists and attribute sets hold thunks.
+//!
+//! Supported: all expression syntax except URI literals and paths with
+//! interpolation; `derivation`, string context, `import` and the builtins
+//! listed in `builtins.rs`. Files use the `.neki` extension; importing a
+//! directory imports its `default.neki`.
 
-#![allow(unused_variables)] // skeleton: stub bodies
+mod ast;
+mod builtins;
+mod derivation;
+mod eval;
+mod parser;
+mod value;
 
-use std::collections::BTreeMap;
+pub use value::{Attrs, Context, ContextElem, Lambda, PrimOpApp, Thunk, Value};
+
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+
+use neki_derivation::Derivation;
+use neki_hash::{Hash, StoreDir, StorePath};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -15,61 +29,59 @@ pub enum Error {
     Parse { file: PathBuf, message: String },
     #[error("evaluation error: {0}")]
     Eval(String),
+    /// `throw` and failed `assert`s, which `builtins.tryEval` catches.
+    #[error("{0}")]
+    Throw(String),
+    #[error("evaluation aborted: {0}")]
+    Abort(String),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Debug, Clone)]
-pub enum Value {
-    Null,
-    Bool(bool),
-    Int(i64),
-    Float(f64),
-    /// A string plus the store paths it refers to ("string context").
-    String {
-        s: String,
-        context: Vec<String>,
+/// Decides, given an entry's path and type (`regular`, `directory` or
+/// `symlink`), whether it is copied to the store.
+pub type PathFilter<'a> = &'a mut dyn FnMut(&Path, &str) -> Result<bool>;
+
+/// What evaluation needs from the store: `derivation`, path literals in
+/// strings, `builtins.toFile` and the fetchers write to it.
+pub trait EvalStore {
+    fn store_dir(&self) -> &StoreDir;
+    /// Copy `path` into the store, keeping what `filter` accepts.
+    fn add_path(
+        &self,
+        name: &str,
+        path: &Path,
+        filter: Option<PathFilter>,
+    ) -> Result<StorePath, String>;
+    fn add_text(
+        &self,
+        name: &str,
+        text: &str,
+        refs: &BTreeSet<StorePath>,
+    ) -> Result<StorePath, String>;
+    /// Store a finalized derivation.
+    fn add_derivation(&self, drv: &Derivation) -> Result<StorePath, String>;
+    fn read_derivation(&self, path: &StorePath) -> Result<Derivation, String>;
+    /// Fetch at evaluation time (`builtins.fetchurl`, `fetchTarball`,
+    /// `fetchGit`).
+    fn fetch(&self, name: &str, request: &FetchRequest) -> Result<StorePath, String>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FetchRequest {
+    /// A file; `hash` of its contents.
+    Url { url: String, hash: Option<Hash> },
+    /// An archive unpacked with its top-level directory removed; `hash` of
+    /// the tree's NAR.
+    Tarball { url: String, hash: Option<Hash> },
+    Git {
+        url: String,
+        rev: Option<String>,
+        reference: Option<String>,
     },
-    Path(PathBuf),
-    List(Rc<Vec<Thunk>>),
-    Attrs(Rc<BTreeMap<String, Thunk>>),
-    Lambda(Rc<Lambda>),
 }
 
-/// A value that may not be evaluated yet.
-#[derive(Debug)]
-pub struct Thunk {
-    _private: (),
-}
+pub use eval::Evaluator;
 
-/// A function value with its captured environment.
-#[derive(Debug)]
-pub struct Lambda {
-    _private: (),
-}
-
-#[derive(Debug, Default)]
-pub struct Evaluator {
-    /// Directories searched for `<name>` lookups.
-    pub search_path: Vec<PathBuf>,
-}
-
-impl Evaluator {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn eval_file(&mut self, path: &Path) -> Result<Value> {
-        todo!("M4: parse and evaluate file")
-    }
-
-    /// Evaluate `src`; relative paths in it resolve against `base_dir`.
-    pub fn eval_str(&mut self, src: &str, base_dir: &Path) -> Result<Value> {
-        todo!("M4: parse and evaluate string")
-    }
-
-    /// Force `value` and everything inside it.
-    pub fn force_deep(&mut self, value: &Value) -> Result<Value> {
-        todo!("M4: deep force")
-    }
-}
+#[cfg(test)]
+mod tests;
