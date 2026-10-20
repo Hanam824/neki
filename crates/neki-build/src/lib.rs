@@ -125,10 +125,26 @@ pub struct BuildResult {
 
 #[derive(Debug, Clone)]
 pub enum BuildEvent {
-    Started { drv: StorePath },
-    Log { drv: StorePath, line: String },
-    Finished { drv: StorePath, success: bool },
-    Substituted { path: StorePath },
+    /// A derivation will be built once the ones in `waits_for` are; sent
+    /// for every derivation to build before the first starts.
+    Planned {
+        drv: StorePath,
+        waits_for: Vec<StorePath>,
+    },
+    Started {
+        drv: StorePath,
+    },
+    Log {
+        drv: StorePath,
+        line: String,
+    },
+    Finished {
+        drv: StorePath,
+        success: bool,
+    },
+    Substituted {
+        path: StorePath,
+    },
 }
 
 /// Called from worker threads.

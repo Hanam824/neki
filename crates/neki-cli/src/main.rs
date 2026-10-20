@@ -822,6 +822,11 @@ impl EventSink for Sink {
                 Event::Substituted { path } => {
                     json!({ "event": "substituted", "path": path.to_string() })
                 }
+                Event::BuildPlanned { drv, waits_for } => json!({
+                    "event": "build-planned",
+                    "drv": drv.to_string(),
+                    "waitsFor": waits_for.iter().map(ToString::to_string).collect::<Vec<_>>(),
+                }),
                 Event::Message(message) => json!({ "event": "message", "message": message }),
             };
             eprintln!("{value}");
@@ -838,6 +843,7 @@ impl EventSink for Sink {
             Event::Download { path, done: 0, .. } => eprintln!("downloading {path}"),
             Event::Download { .. } => {}
             Event::Substituted { path } => eprintln!("downloaded {path}"),
+            Event::BuildPlanned { .. } => {}
             Event::Message(message) => eprintln!("{message}"),
         }
     }
