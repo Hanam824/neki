@@ -458,6 +458,7 @@ impl EventSink for UiSink {
             } => (Level::Error, format!("Failed {drv}")),
             Event::Download { path, done: 0, .. } => (Level::Info, format!("Downloading {path}")),
             Event::Download { .. } => return,
+            Event::Substituted { path } => (Level::Ok, format!("Downloaded {path}")),
             Event::Message(message) => (Level::Info, message),
         };
         let _ = self
