@@ -106,7 +106,9 @@ rec {
     (assemble "rust-${info.version}" (map component source.components)) // { inherit (source) target; };
 
   # Build a Cargo project offline from its `Cargo.lock`: every crate is
-  # downloaded by its locked checksum into a vendor directory first.
+  # downloaded by its locked checksum (or, from git, at its locked commit)
+  # into a vendor directory first. Git crates whose Cargo.toml inherits
+  # from their workspace (`workspace = true`) aren't supported.
   # Outside Windows, `zig` provides the C linker Rust needs.
   buildRustPackage = { name, src, rust, zig ? null, cargoLock ? src + "/Cargo.lock" }:
     let
@@ -123,13 +125,60 @@ rec {
         stripRoot = "1";
         binDirs = "";
       };
+      # Git dependencies: `git+<url>[?branch=…|tag=…|rev=…]#<commit>`, fetched
+      # at the locked commit. The crate may be in a subfolder of the repository.
+      gitPackages = builtins.filter (p: builtins.substring 0 4 (p.source or "") == "git+") (lock.package or [ ]);
+      parseGit = source:
+        let m = builtins.match "git\\+([^?#]*)(\\?([^#]*))?#(.*)" source;
+        in {
+          url = builtins.elemAt m 0;
+          query = builtins.elemAt m 2;
+          rev = builtins.elemAt m 3;
+          # What Cargo.lock calls the source, without the commit.
+          key = builtins.head (builtins.split "#" source);
+        };
+      findCrate = crateName: dir: depth:
+        let
+          manifest = dir + "/Cargo.toml";
+          here = builtins.pathExists manifest
+            && ((builtins.fromTOML (builtins.readFile manifest)).package.name or null) == crateName;
+          entries = builtins.readDir dir;
+          subdirs = builtins.filter (n: entries.${n} == "directory" && n != "target") (builtins.attrNames entries);
+        in
+        if here then [ dir ]
+        else if depth == 0 then [ ]
+        else builtins.concatMap (n: findCrate crateName "${dir}/${n}" (depth - 1)) subdirs;
+      gitCrate = p:
+        let
+          git = parseGit p.source;
+          checkout = (builtins.fetchGit { inherit (git) url rev; }).outPath;
+          found = findCrate p.name checkout 3;
+        in
+        if found == [ ] then throw "${git.url} at ${git.rev} has no crate named ${p.name}"
+        else builtins.head found;
       vendor = assemble "${name}-vendor" ([ { path = ".keep"; text = ""; } ] ++ builtins.concatMap (p: [
         { path = "${p.name}-${p.version}"; src = crate p; }
         {
           path = "${p.name}-${p.version}/.cargo-checksum.json";
           text = builtins.toJSON { files = { }; package = p.checksum; };
         }
-      ]) crates);
+      ]) crates ++ builtins.concatMap (p: [
+        { path = "git-${p.name}-${p.version}"; src = gitCrate p; }
+        { path = "git-${p.name}-${p.version}/.cargo-checksum.json"; text = builtins.toJSON { files = { }; }; }
+      ]) gitPackages);
+      # Point every git source at the vendor directory, as `cargo vendor` does.
+      gitSources = builtins.attrValues (builtins.listToAttrs (map (p:
+        let git = parseGit p.source; in { name = git.key; value = git; }) gitPackages));
+      gitConfig = builtins.concatMap (git:
+        let
+          source = "source.'${git.key}'";
+          kv = if git.query == null then [ ] else builtins.filter builtins.isString (builtins.split "&" git.query);
+          field = pair: let parts = builtins.split "=" pair; in
+            [ "--config" "${source}.${builtins.head parts}='${builtins.elemAt parts 2}'" ];
+        in
+        [ "--config" "${source}.git='${git.url}'" ]
+        ++ builtins.concatMap field kv
+        ++ [ "--config" "${source}.replace-with='vendored'" ]) gitSources;
       zigTargets = {
         aarch64-apple-darwin = "aarch64-macos";
         x86_64-apple-darwin = "x86_64-macos";
@@ -163,14 +212,14 @@ rec {
     runCommands {
       inherit name src;
       buildInputs = [ rust ];
-      commands = [ [
+      commands = [ ([
         "cargo" "install" "--path" "." "--root" "\${out}" "--locked" "--offline"
         "--config" "source.crates-io.replace-with=\"vendored\""
         # TOML literal strings: Windows paths have backslashes.
         "--config" "source.vendored.directory='${vendor}'"
         # Keep the build directory's path out of the program.
         "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build'${windowsFlags}]"
-      ] ];
+      ] ++ gitConfig) ];
       # Stripping needs LLVM tools that the minimal toolchain doesn't have.
       env = linkerEnv // { CARGO_INCREMENTAL = "0"; CARGO_PROFILE_RELEASE_STRIP = "false"; };
     };

@@ -13,4 +13,10 @@ name = "rust-hello"
 version = "0.1.0"
 dependencies = [
  "itoa",
+ "ryu",
 ]
+
+[[package]]
+name = "ryu"
+version = "1.0.20"
+source = "git+https://github.com/dtolnay/ryu?tag=1.0.20#02237f8751db162e9ed0f5bd3e7135d1b256822e"
