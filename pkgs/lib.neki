@@ -153,6 +153,8 @@ rec {
           exec "${zig}/zig" cc -target ${zigTargets.${rust.target}} "$@"
         '';
       } ];
+      # The Windows linker stamps the build time into executables.
+      windowsFlags = if isWindows then ", '-C', 'link-arg=-Wl,--no-insert-timestamp'" else "";
       targetVar = builtins.replaceStrings [ "-" ] [ "_" ] (lib_upper rust.target);
       linkerEnv = optionalAttrs (zig != null && !isWindows) {
         "CARGO_TARGET_${targetVar}_LINKER" = "${linker}/bin/zig-cc";
@@ -167,7 +169,7 @@ rec {
         # TOML literal strings: Windows paths have backslashes.
         "--config" "source.vendored.directory='${vendor}'"
         # Keep the build directory's path out of the program.
-        "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build']"
+        "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build'${windowsFlags}]"
       ] ];
       # Stripping needs LLVM tools that the minimal toolchain doesn't have.
       env = linkerEnv // { CARGO_INCREMENTAL = "0"; CARGO_PROFILE_RELEASE_STRIP = "false"; };
