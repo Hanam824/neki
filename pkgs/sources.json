@@ -1,4 +1,29 @@
 {
+  "act": {
+    "version": "0.2.89",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/nektos/act/releases/download/v0.2.89/act_Darwin_arm64.tar.gz",
+        "sha256": "48ae218af96725f7635a66de2b87e1e346893b02add0f16b92f560296b2151fc"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/nektos/act/releases/download/v0.2.89/act_Darwin_x86_64.tar.gz",
+        "sha256": "41b31488e7c254baec31cce12c7dade3e35973b8a31b9486206ad43f233d814e"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/nektos/act/releases/download/v0.2.89/act_Linux_x86_64.tar.gz",
+        "sha256": "0191d6f1f3b716b5c55820032605d05fc3c1cdbf581ebeff655019e5dd1524c0"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/nektos/act/releases/download/v0.2.89/act_Linux_arm64.tar.gz",
+        "sha256": "daa8679ba9615a74d2d0cec321dc593f21948a2a11bb65862b063d8b930f4bcb"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/nektos/act/releases/download/v0.2.89/act_Windows_x86_64.zip",
+        "sha256": "0f8cf866ad7e32421a219fc551a0a0ea5d12ead464de12ebfeafd334a5973b50"
+      }
+    }
+  },
   "actionlint": {
     "version": "1.7.12",
     "systems": {
@@ -46,6 +71,57 @@
       "x86_64-windows": {
         "url": "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-pc-windows-msvc.zip",
         "sha256": "0f729b4b6f5f28d395c641eacc2e9ff68d0096b85aa0eec344aa62425144b69b"
+      }
+    }
+  },
+  "biome": {
+    "version": "2.5.15",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.5.15/biome-darwin-arm64",
+        "sha256": "3636796d8c78bfcfe0d45946dc93e21e12d27a49eba7401e18af1ea854d25503"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.5.15/biome-darwin-x64",
+        "sha256": "86fc618563d19f373ac24eb5b8f1e41bd753a506d5df1f198c152ec365141490"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.5.15/biome-linux-x64",
+        "sha256": "5d867a0b2ccea1755b7e508b01d836a8c64e31a1e4d11ec24b43b6b4eec8b3b6"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.5.15/biome-linux-arm64",
+        "sha256": "a56bcd73ddbfdb0f57a82bb67b7ea698eed4027aff602b95aa18fafe919d59e0"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/biomejs/biome/releases/download/%40biomejs/biome%402.5.15/biome-win32-x64.exe",
+        "sha256": "f2beadee753b78fe76081158123538be886a31b5e67a34863e42535f3f491926"
+      }
+    },
+    "install": "biome"
+  },
+  "bottom": {
+    "version": "0.14.9",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_aarch64-apple-darwin.tar.gz",
+        "sha256": "28358e19a3d62b3778fc0d1778b0028a682059145c9ac38ac5076bf124d77714"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_x86_64-apple-darwin.tar.gz",
+        "sha256": "d0b1d446963ee3c4dfbfe2efd9614cfdc77f39e8268bf8cc2e0b5b6cea982774"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "b4bee5b193e7d3f6e090ac14f0ca15acec2e7fe4ef64988e0bfc492e16c28c9a"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_aarch64-unknown-linux-musl.tar.gz",
+        "sha256": "7b6d532f6a6af356970f4e8d7d3a792590485aa4a53ebf038e10d20366125533"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_x86_64-pc-windows-msvc.zip",
+        "sha256": "01660721b0fdc72b191f2b27b78dc9a3087aeb7b3fad4a890c53870089d6b500"
       }
     }
   },
@@ -142,6 +218,31 @@
       "x86_64-windows": {
         "url": "https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip",
         "sha256": "a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238"
+      }
+    }
+  },
+  "difftastic": {
+    "version": "0.71.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/Wilfred/difftastic/releases/download/0.71.0/difft-0.71.0-aarch64-apple-darwin.tar.gz",
+        "sha256": "92acf8890543b6d6f436a87a7a5ec64f82a4b8dbe3a7e564c1e5cbfe60823bc7"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/Wilfred/difftastic/releases/download/0.71.0/difft-0.71.0-x86_64-apple-darwin.tar.gz",
+        "sha256": "390b5299b0bc5059b5617f448eb1f3cb42c689933258fc57770c24d257a5d8a8"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/Wilfred/difftastic/releases/download/0.71.0/difft-0.71.0-x86_64-unknown-linux-musl.tar.gz",
+        "sha256": "0a65e6715df992b0adae012e606bd9cc74fa6cfe90eaf13bbae165a0a19b3086"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/Wilfred/difftastic/releases/download/0.71.0/difft-0.71.0-aarch64-unknown-linux-gnu.tar.gz",
+        "sha256": "5f046098b36ff985d0f99fec6f22cf74961db60386ff9d40df39fd99660aae2c"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/Wilfred/difftastic/releases/download/0.71.0/difft-0.71.0-x86_64-pc-windows-msvc.zip",
+        "sha256": "9a979f9d96d739625a0fe69317f3197cc7bcef663a6d7195197d6c9bf96ed6f5"
       }
     }
   },
@@ -271,6 +372,31 @@
       }
     }
   },
+  "gitleaks": {
+    "version": "8.30.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz",
+        "sha256": "b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_x64.tar.gz",
+        "sha256": "dfe101a4db2255fc85120ac7f3d25e4342c3c20cf749f2c20a18081af1952709"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz",
+        "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz",
+        "sha256": "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip",
+        "sha256": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e"
+      }
+    }
+  },
   "go": {
     "version": "1.27.2",
     "systems": {
@@ -320,6 +446,32 @@
         "sha256": "cd7ea6063c95de245e17e5246e42bdc14bb221792c429dbd239ab3a6ade6ca6a"
       }
     }
+  },
+  "hadolint": {
+    "version": "2.15.1",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-macos-arm64",
+        "sha256": "5c09f3213f8e40406abe048233d985eebef336d4a6a20021be47fadb6cf480a2"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-macos-x86_64",
+        "sha256": "ffe9bb18b23d5ed1eae50237aecdbb523d016e96da0bd4e7aa432040acfc3fde"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-x86_64",
+        "sha256": "c7187db94eeeeca956519a6af171adc31453941a1e777961f6e680f697c8c507"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-linux-arm64",
+        "sha256": "f6198ef8090f404dbb771abfee086eb8c48ac177f30da7fd3510aca35b344b5d"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/hadolint/hadolint/releases/download/v2.15.1/hadolint-windows-x86_64.exe",
+        "sha256": "01d927294962b5387f9ead4f18679158452be4f17c765ad0bdffe5264b9c7b0a"
+      }
+    },
+    "install": "hadolint"
   },
   "helm": {
     "version": "4.3.1",
@@ -620,6 +772,31 @@
       "x86_64-windows": {
         "url": "https://releases.hashicorp.com/packer/1.16.1/packer_1.16.1_windows_amd64.zip",
         "sha256": "48e9b25ecf807959a1dcb9aa9b074e6fcd08c7b7ed89803538647c5873dbc95b"
+      }
+    }
+  },
+  "pnpm": {
+    "version": "12.14.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/pnpm/pnpm/releases/download/v12.14.0/pnpm-darwin-arm64.tar.gz",
+        "sha256": "50f48e0e17508952790a3fbf58fcf14f3b82efa5f594ca04ad904e29aaf854b0"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/pnpm/pnpm/releases/download/v12.14.0/pnpm-darwin-x64.tar.gz",
+        "sha256": "2c412e07382049b4edb04fa6da78f3d4ef7810b75853c80544dcfb7c0ed79880"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/pnpm/pnpm/releases/download/v12.14.0/pnpm-linux-x64.tar.gz",
+        "sha256": "3910c3852136bed5bc1511b9137a45fd4357ed6b3970d9d08893641e9005867e"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/pnpm/pnpm/releases/download/v12.14.0/pnpm-linux-arm64.tar.gz",
+        "sha256": "cfc780b9e690549e6633e1045fb1fb6ef84e390711e2099e6ccbae91c32456ea"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/pnpm/pnpm/releases/download/v12.14.0/pnpm-win32-x64.zip",
+        "sha256": "6f0f38e917c8ce76ef31db528c357e2bfa354a1bcb16464e3cdec39e6530d784"
       }
     }
   },
@@ -956,6 +1133,31 @@
       "x86_64-windows": {
         "url": "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_windows_amd64.zip",
         "sha256": "6ea2c186e0e76a113af30fbcdcf7a4b4c70756317994a04929e5c90b9e94b1df"
+      }
+    }
+  },
+  "trivy": {
+    "version": "0.76.0",
+    "systems": {
+      "aarch64-darwin": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.0/trivy_0.76.0_macOS-ARM64.tar.gz",
+        "sha256": "e7ec0d21fe842553f59af99aba2efbcc822369fbaed27019c575408b6d135fce"
+      },
+      "x86_64-darwin": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.0/trivy_0.76.0_macOS-64bit.tar.gz",
+        "sha256": "89563d4d495cf4ef06a0d1950f8710b124e9f7bd2615ec6c47b03673f4ad45a2"
+      },
+      "x86_64-linux": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.0/trivy_0.76.0_Linux-64bit.tar.gz",
+        "sha256": "e24b1c51293c1b15e4ba8d45bbc7891ba053f90278ec2698f3562c993e145fe7"
+      },
+      "aarch64-linux": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.0/trivy_0.76.0_Linux-ARM64.tar.gz",
+        "sha256": "aab21e677a7b7071fc79f1711480840754c18a1b9d9cefa7ccd06af63a0e8f4c"
+      },
+      "x86_64-windows": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.0/trivy_0.76.0_windows-64bit.zip",
+        "sha256": "7b4762a5a5326cb4b83dfd2bb5d9aaf15a1ed867c75cad7dd8b38840a28e7be6"
       }
     }
   },
