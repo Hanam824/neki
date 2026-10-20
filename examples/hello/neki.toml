@@ -1,16 +1,19 @@
 [project]
 name = "hello"
-description = "Example Neki project"
+description = "Example Neki project: a dev shell and a build with plain commands"
 
 [inputs]
-# Placeholder: no Neki package set exists yet.
-pkgs = { url = "github:neki-pkgs/pkgs" }
+# The package set in this repository. Outside it, use
+# pkgs = { url = "github:Hanam824/neki?dir=pkgs" }
+pkgs = { url = "path:../../pkgs" }
 
 [dev-shell]
-packages = ["pkgs.rustc", "pkgs.cargo"]
-env = { RUST_LOG = "info" }
+packages = ["pkgs.jq", "pkgs.ripgrep", "pkgs.python"]
+env = { GREETING = "hello" }
+shell-hook = "echo \"neki dev shell: jq, rg and python are on PATH\""
 
 [packages.default]
 src = "."
-build-inputs = ["pkgs.rustc", "pkgs.cargo"]
-build = [["cargo", "install", "--path", ".", "--root", "${out}"]]
+build-inputs = ["pkgs.python"]
+# Argument lists, run without a shell, so they work the same on every OS.
+build = [["python", "build.py", "${out}"]]

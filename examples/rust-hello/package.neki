@@ -1,0 +1,12 @@
+# Built from Cargo.lock: each crate is downloaded by its locked checksum,
+# then cargo builds offline. zig links on macOS and Linux.
+{ inputs, src, name, ... }:
+
+let
+  pkgs = inputs.pkgs;
+in
+pkgs.lib.buildRustPackage {
+  inherit name src;
+  rust = pkgs.rust;
+  zig = pkgs.zig;
+}

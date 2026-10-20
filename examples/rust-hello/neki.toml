@@ -1,0 +1,14 @@
+[project]
+name = "rust-hello"
+description = "A Rust program built offline from Cargo.lock"
+
+[inputs]
+pkgs = { url = "path:../../pkgs" }
+
+[dev-shell]
+packages = ["pkgs.rust", "pkgs.zig"]
+
+[packages.default]
+src = "."
+file = "package.neki"
+exclude = ["target"]
