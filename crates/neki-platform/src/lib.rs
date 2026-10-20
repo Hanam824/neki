@@ -3,8 +3,6 @@
 //! Linux. A function belongs here only if it can offer identical behaviour on
 //! all three; anything else is out of scope (see `docs/PLAN.md`, Future).
 
-#![allow(unused_variables)] // skeleton: stub bodies
-
 pub mod fs;
 pub mod paths;
 pub mod process;
