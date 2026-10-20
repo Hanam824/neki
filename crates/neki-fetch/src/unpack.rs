@@ -9,7 +9,11 @@ use crate::{Error, Result, at};
 /// Unpack `archive` into the new directory `dest`. The format is detected
 /// from the file's first bytes. With `strip_root`, the archive must hold a
 /// single top-level directory, whose contents become `dest`.
-pub fn unpack(archive: &Path, dest: &Path, strip_root: bool) -> Result<()> {
+///
+/// An entry whose path differs only by case from an earlier entry's (say
+/// `terminfo/2/2621A` after `terminfo/2/2621a`) would collide on Windows
+/// and macOS, so it is left out; the paths left out are returned.
+pub fn unpack(archive: &Path, dest: &Path, strip_root: bool) -> Result<Vec<String>> {
     let fail = |reason: String| Error::Unpack {
         archive: archive.to_path_buf(),
         reason,
@@ -17,7 +21,8 @@ pub fn unpack(archive: &Path, dest: &Path, strip_root: bool) -> Result<()> {
     let staging = sibling(dest, "unpack");
     let _ = neki_platform::fs::remove_tree(&staging);
     fs::create_dir(&staging).map_err(at(&staging))?;
-    let result = unpack_into(archive, &staging).map_err(|err| match err {
+    let mut names = Names::default();
+    let result = unpack_into(archive, &staging, &mut names).map_err(|err| match err {
         Unpacking::Io(err) => fail(err.to_string()),
         Unpacking::Bad(reason) => fail(reason),
     });
@@ -37,7 +42,43 @@ pub fn unpack(archive: &Path, dest: &Path, strip_root: bool) -> Result<()> {
         fs::rename(&root, dest).map_err(at(dest))
     });
     let _ = neki_platform::fs::remove_tree(&staging);
-    result
+    result.map(|()| names.skipped)
+}
+
+/// The entry paths seen so far, to leave out ones that differ from an
+/// earlier one only by case.
+#[derive(Default)]
+struct Names {
+    /// Every path and parent path seen, lowercased → as spelled.
+    seen: std::collections::HashMap<String, String>,
+    skipped: Vec<String>,
+}
+
+impl Names {
+    /// Whether to unpack `name`; false (and recorded) if it or a parent
+    /// differs only by case from an earlier entry's.
+    fn accept(&mut self, name: &Path) -> bool {
+        let mut prefix = String::new();
+        for component in name.components() {
+            if let Component::Normal(part) = component {
+                if !prefix.is_empty() {
+                    prefix.push('/');
+                }
+                prefix.push_str(&part.to_string_lossy());
+                match self.seen.get(&prefix.to_lowercase()) {
+                    Some(spelled) if *spelled != prefix => {
+                        self.skipped.push(name.display().to_string());
+                        return false;
+                    }
+                    Some(_) => {}
+                    None => {
+                        self.seen.insert(prefix.to_lowercase(), prefix.clone());
+                    }
+                }
+            }
+        }
+        true
+    }
 }
 
 enum Unpacking {
@@ -51,18 +92,19 @@ impl From<io::Error> for Unpacking {
     }
 }
 
-fn unpack_into(archive: &Path, dest: &Path) -> Result<(), Unpacking> {
+fn unpack_into(archive: &Path, dest: &Path, names: &mut Names) -> Result<(), Unpacking> {
     let mut file = File::open(archive)?;
     let mut magic = [0u8; 6];
     let n = read_up_to(&mut file, &mut magic)?;
     file.rewind()?;
     let magic = &magic[..n];
     if magic.starts_with(b"PK\x03\x04") || magic.starts_with(b"PK\x05\x06") {
-        unzip(file, dest)
+        unzip(file, dest, names)
     } else if magic.starts_with(&[0x1f, 0x8b]) {
         untar(
             flate2::read::MultiGzDecoder::new(BufReader::new(file)),
             dest,
+            names,
         )
     } else if magic.starts_with(b"\xfd7zXZ\0") {
         // lzma-rs only decompresses whole streams, so go through a file.
@@ -72,12 +114,12 @@ fn unpack_into(archive: &Path, dest: &Path) -> Result<(), Unpacking> {
             lzma_rs::xz_decompress(&mut BufReader::new(file), &mut out)
                 .map_err(|err| Unpacking::Bad(format!("xz: {err}")))?;
             drop(out);
-            untar(BufReader::new(File::open(&tar)?), dest)
+            untar(BufReader::new(File::open(&tar)?), dest, names)
         })();
         let _ = fs::remove_file(&tar);
         result
     } else {
-        untar(BufReader::new(file), dest)
+        untar(BufReader::new(file), dest, names)
     }
 }
 
@@ -139,7 +181,7 @@ fn prepare(path: &Path) -> io::Result<()> {
     }
 }
 
-fn untar(reader: impl Read, dest: &Path) -> Result<(), Unpacking> {
+fn untar(reader: impl Read, dest: &Path, names: &mut Names) -> Result<(), Unpacking> {
     let mut archive = tar::Archive::new(reader);
     for entry in archive.entries()? {
         let mut entry = entry?;
@@ -158,6 +200,9 @@ fn untar(reader: impl Read, dest: &Path) -> Result<(), Unpacking> {
             continue;
         }
         let path = entry_path(dest, &name)?;
+        if !names.accept(&name) {
+            continue;
+        }
         match kind {
             tar::EntryType::Directory => fs::create_dir_all(&path)?,
             tar::EntryType::Regular | tar::EntryType::Continuous => {
@@ -193,7 +238,7 @@ fn untar(reader: impl Read, dest: &Path) -> Result<(), Unpacking> {
     Ok(())
 }
 
-fn unzip(file: File, dest: &Path) -> Result<(), Unpacking> {
+fn unzip(file: File, dest: &Path, names: &mut Names) -> Result<(), Unpacking> {
     let mut archive = zip::ZipArchive::new(BufReader::new(file))
         .map_err(|err| Unpacking::Bad(err.to_string()))?;
     for i in 0..archive.len() {
@@ -207,6 +252,9 @@ fn unzip(file: File, dest: &Path) -> Result<(), Unpacking> {
                 .into_owned(),
         );
         let path = entry_path(dest, &name)?;
+        if !names.accept(&name) {
+            continue;
+        }
         let mode = entry.unix_mode().unwrap_or(0);
         if entry.is_dir() {
             fs::create_dir_all(&path)?;

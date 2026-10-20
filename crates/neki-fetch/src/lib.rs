@@ -100,6 +100,7 @@ pub fn fetch(
             let archive = tmp.path().join("archive");
             download(url, &archive, progress)?;
             let tree = tmp.path().join("tree");
+            // Case collisions are dropped; the hash check catches surprises.
             unpack(&archive, &tree, *strip_root)?;
             (url, tree)
         }

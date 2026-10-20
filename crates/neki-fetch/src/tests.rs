@@ -237,3 +237,23 @@ fn unpacks_xz() {
     unpack(&env.file("a.tar.xz", &xz), &dest, true).unwrap();
     assert_eq!(fs::read_to_string(dest.join("f")).unwrap(), "hi");
 }
+
+#[test]
+fn entries_differing_only_by_case_are_left_out() {
+    let env = Env::new();
+    let mut tar = tar::Builder::new(Vec::new());
+    for name in ["t/2/2621a", "t/2/2621A", "T/x", "t/ok"] {
+        let mut header = tar::Header::new_gnu();
+        header.set_size(1);
+        header.set_mode(0o644);
+        header.set_cksum();
+        tar.append_data(&mut header, name, &b"x"[..]).unwrap();
+    }
+    let archive = env.file("case.tar", &tar.into_inner().unwrap());
+    let dest = env.dir.path().join("case");
+    let skipped = unpack(&archive, &dest, false).unwrap();
+    assert_eq!(skipped, ["t/2/2621A", "T/x"]);
+    assert!(dest.join("t/2/2621a").is_file() && dest.join("t/ok").is_file());
+    // The result is a valid (portable) store tree.
+    neki_nar::dump(&dest, &mut Vec::new()).unwrap();
+}

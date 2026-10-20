@@ -166,13 +166,24 @@ fn run_builder(
             if env.get("unpack").is_some_and(|v| v == "1") {
                 let archive = build_dir.join("download");
                 neki_fetch::download(url, &archive, &|_, _| {})?;
-                neki_fetch::unpack(&archive, &out()?, strip_root)?;
+                for skipped in neki_fetch::unpack(&archive, &out()?, strip_root)? {
+                    log.line(&format!(
+                        "left out {skipped}: differs only by case from an earlier entry"
+                    ));
+                }
             } else {
                 neki_fetch::download(url, &out()?, &|_, _| {})?;
             }
             Ok(())
         }
-        "builtin:unpack" => crate::builtins::unpack(&env, &out()?, build_dir),
+        "builtin:unpack" => {
+            for skipped in crate::builtins::unpack(&env, &out()?, build_dir)? {
+                log.line(&format!(
+                    "left out {skipped}: differs only by case from an earlier entry"
+                ));
+            }
+            Ok(())
+        }
         "builtin:assemble" => crate::builtins::assemble(&env, &out()?),
         "builtin:run" => {
             let dir = match env.get("src") {

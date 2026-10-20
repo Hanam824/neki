@@ -19,7 +19,9 @@ fn at(path: &Path) -> impl FnOnce(std::io::Error) -> Error + '_ {
     }
 }
 
-pub fn unpack(env: &BTreeMap<String, String>, out: &Path, build_dir: &Path) -> Result<()> {
+/// Returns the archive entries left out because they differ from an
+/// earlier one only by case.
+pub fn unpack(env: &BTreeMap<String, String>, out: &Path, build_dir: &Path) -> Result<Vec<String>> {
     let src = Path::new(env.get("src").ok_or_else(|| invalid("no `src`"))?);
     if let Some(install) = env.get("install") {
         let dest = out.join(install);
@@ -35,11 +37,11 @@ pub fn unpack(env: &BTreeMap<String, String>, out: &Path, build_dir: &Path) -> R
         } else {
             dir.to_str().unwrap_or(".")
         };
-        return write_bin_dirs(out, &[dir.to_string()]);
+        return write_bin_dirs(out, &[dir.to_string()]).map(|()| Vec::new());
     }
 
     let tree = build_dir.join("unpacked");
-    neki_fetch::unpack(src, &tree, false)?;
+    let skipped = neki_fetch::unpack(src, &tree, false)?;
     let root = match env.get("stripRoot").map(String::as_str) {
         None | Some("0") => tree.clone(),
         Some("1") => {
@@ -69,7 +71,8 @@ pub fn unpack(env: &BTreeMap<String, String>, out: &Path, build_dir: &Path) -> R
         Some(dirs) => dirs.split_whitespace().map(String::from).collect(),
         None => find_bin_dirs(out)?,
     };
-    write_bin_dirs(out, &dirs)
+    write_bin_dirs(out, &dirs)?;
+    Ok(skipped)
 }
 
 /// The only entry of `dir`, if it is a directory.

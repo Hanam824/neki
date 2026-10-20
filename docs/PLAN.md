@@ -28,7 +28,7 @@ Rule: one behaviour on every OS. Where the OS mechanism differs but the behaviou
 | P7 | Toolchains | Compilers are normal inputs; no toolchain bundled yet | LLVM-mingw stdenv, MSVC as an impure system input (it can't be redistributed) |
 | P8 | Store immutability | `std` read-only permission on registered files, plus `neki store verify` | Windows deny-write ACL, `chattr +i` |
 | P9 | Store root | Fixed per OS family: `C:\neki\store` (Windows) or `/opt/neki/store` (macOS + Linux; `/opt` needs no synthetic APFS volume on macOS); state in `C:\neki\var` / `/opt/neki/var`; overridable with `NEKI_STORE_DIR` / `NEKI_STATE_DIR` | Relocatable stores |
-| P10 | File names | The NAR unpacker rejects names invalid on **any** supported OS (Windows reserved names/chars, trailing dot/space) so store contents are portable. The exec bit is stored in the NAR and applied only on Unix | Escaping instead of rejection |
+| P10 | File names | The NAR unpacker rejects names invalid on **any** supported OS (Windows reserved names/chars, trailing dot/space) so store contents are portable. Archives are unpacked leaving out entries that differ only by case from an earlier one (logged), e.g. ncurses terminfo in Linux releases. The exec bit is stored in the NAR and applied only on Unix | Escaping instead of rejection |
 | P11 | Daemon / multi-user | Single-user, in-process | Daemon (Unix socket / named pipe), multi-user |
 | P12 | Shells | `neki develop`/`neki shell` spawn a child shell with the env applied (`$SHELL` on Unix, PowerShell on Windows). Activation scripts for POSIX sh and PowerShell (pwsh runs on all 3 OSes) | cmd, fish and Nushell scripts, direnv-style auto-activation |
 | P13 | Reference scanning | Scan outputs for hashes in UTF-8 **and** UTF-16LE on every OS | — |
