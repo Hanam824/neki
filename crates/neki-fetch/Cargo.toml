@@ -1,15 +1,26 @@
 [package]
 name = "neki-fetch"
-description = "Fetchers: url, archive, git"
+description = "Downloading and unpacking sources into the store"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+flate2.workspace = true
+lzma-rs.workspace = true
+neki-derivation.workspace = true
 neki-hash.workspace = true
+neki-nar.workspace = true
+neki-platform.workspace = true
 neki-store.workspace = true
+tar.workspace = true
 thiserror.workspace = true
+ureq.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
