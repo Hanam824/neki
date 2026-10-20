@@ -11,8 +11,8 @@ use neki_core::{Config, Event, EventSink, MANIFEST_FILE, Manifest, Neki, Project
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
 use crate::registry::Registry;
-use crate::views;
 use crate::{AppState, AppWindow, KeyValue, LogEntry, ProjectDetail, ProjectItem};
+use crate::{form, views};
 
 /// Oldest activity entries are dropped beyond this.
 const MAX_LOG: usize = 500;
@@ -122,6 +122,25 @@ fn connect(ui: &AppWindow, state: &Shared) {
             return;
         };
         start_build(&mut state.borrow_mut(), &ui, project, package.to_string());
+    }));
+    app.on_load_form(handler!(|ui, _state| {
+        form::load(&ui);
+    }));
+    app.on_form_input_changed(handler!(
+        |ui, _state, index: i32, name: SharedString, url: SharedString| {
+            form::change_input(&ui, index, &name, &url);
+        }
+    ));
+    app.on_form_input_removed(handler!(|ui, _state, index: i32| {
+        form::remove_input(&ui, index);
+    }));
+    app.on_form_package_changed(handler!(
+        |ui, _state, index: i32, src: SharedString, inputs: SharedString, file: SharedString| {
+            form::change_package(&ui, index, &src, &inputs, &file);
+        }
+    ));
+    app.on_apply_form(handler!(|ui, _state| {
+        form::apply_to_text(&ui);
     }));
     app.on_select_build_drv(handler!(|ui, _state, drv: SharedString| {
         views::select_build_drv(&ui, &drv);
@@ -351,6 +370,7 @@ fn select(state: &State, ui: &AppWindow, index: i32) {
     let text = std::fs::read_to_string(entry.root.join(MANIFEST_FILE)).unwrap_or_default();
     app.set_manifest_text(text.into());
     app.set_manifest_dirty(false);
+    form::load(ui);
     app.set_manifest_error(
         entry
             .project

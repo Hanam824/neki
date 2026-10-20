@@ -47,6 +47,19 @@ export struct GraphNode {
     y: length,
 }
 
+export struct InputRow {
+    name: string,
+    url: string,
+}
+
+export struct PackageRow {
+    name: string,
+    src: string,
+    // Space-separated.
+    build-inputs: string,
+    file: string,
+}
+
 export struct PathItem {
     name: string,
     hash: string,
@@ -89,6 +102,18 @@ export global AppState {
     in-out property <string> new-project-path;
     // A project to switch to once unsaved changes are dealt with.
     in-out property <int> pending-select: -1;
+    // 0 = overview, 1 = neki.toml, 2 = form.
+    in-out property <int> project-tab: 0;
+    // The Form tab: fields of the editor text, applied back with apply-form.
+    in-out property <string> form-name;
+    in-out property <string> form-description;
+    in-out property <[InputRow]> form-inputs;
+    // Space-separated.
+    in-out property <string> form-dev-packages;
+    // One KEY=value per line.
+    in-out property <string> form-dev-env;
+    in-out property <[PackageRow]> form-packages;
+    in-out property <string> form-error;
 
     // Builds
     in-out property <[BuildItem]> builds;
@@ -137,6 +162,13 @@ export global AppState {
     callback build-project(string);
     callback lock-project();
     callback open-dev-shell();
+    callback load-form();
+    // Index (-1 adds a row), name, URL.
+    callback form-input-changed(int, string, string);
+    callback form-input-removed(int);
+    // Index, src, build inputs, file.
+    callback form-package-changed(int, string, string, string);
+    callback apply-form();
 
     callback select-build(int);
     callback cancel-build();
