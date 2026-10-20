@@ -59,9 +59,23 @@ pub struct PackageDecl {
     #[serde(default)]
     pub build_inputs: Vec<String>,
     /// Commands as argv lists, run in order without a shell so they behave
-    /// the same on every OS. `${out}` expands to the output directory.
+    /// the same on every OS. `${out}` expands to the output directory, and
+    /// `${NAME}` to any other build variable.
     #[serde(default)]
     pub build: Vec<Vec<String>>,
+    /// Extra environment variables for the build commands.
+    #[serde(default)]
+    pub env: BTreeMap<String, String>,
+    /// Paths (relative to `src`) left out of the source. `.git` and
+    /// `result` links are always left out.
+    #[serde(default)]
+    pub exclude: Vec<String>,
+    /// Instead of `build`: a `.neki` file (relative to the project) holding
+    /// a function `{ inputs, src, name, ... }:` that returns the package,
+    /// e.g. using a package set's language adapters. `inputs.<name>` is each
+    /// input's package set (or directory), `src` the filtered source.
+    #[serde(default)]
+    pub file: Option<String>,
 }
 
 fn default_src() -> String {
