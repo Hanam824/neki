@@ -23,9 +23,14 @@ impl StoreDir {
         &self.0
     }
 
-    /// Absolute filesystem location of `path`.
+    /// Absolute filesystem location of `path`. It's joined with the
+    /// separator the store dir itself uses (`\` if it has any, else `/`),
+    /// so the text of a path, which ends up in derivations and so in
+    /// hashes, depends only on the store dir and not on the OS.
     pub fn to_path(&self, path: &StorePath) -> PathBuf {
-        self.0.join(path.to_string())
+        let dir = self.0.to_string_lossy();
+        let sep = if dir.contains('\\') { '\\' } else { '/' };
+        PathBuf::from(format!("{}{sep}{path}", dir.trim_end_matches(['/', '\\'])))
     }
 
     /// Parse a path that is directly inside this store.
@@ -147,6 +152,22 @@ impl fmt::Display for StorePath {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn locations_use_the_store_dirs_separator() {
+        let hash = Hash::of_bytes(HashAlgo::Sha256, b"abc");
+        let unix = StoreDir::new("/opt/neki/store");
+        let path = unix.make_path("source", &hash, "x").unwrap();
+        assert_eq!(
+            unix.to_path(&path),
+            PathBuf::from(format!("/opt/neki/store/{path}"))
+        );
+        let windows = StoreDir::new(r"C:\neki\store\");
+        assert_eq!(
+            windows.to_path(&path),
+            PathBuf::from(format!(r"C:\neki\store\{path}"))
+        );
+    }
 
     fn store() -> StoreDir {
         StoreDir::new("/opt/neki/store")

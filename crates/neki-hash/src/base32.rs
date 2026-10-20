@@ -9,7 +9,7 @@ use crate::{Error, Result};
 pub const ALPHABET: &[u8; 32] = b"0123456789abcdfghijklmnpqrsvwxyz";
 
 /// Number of characters needed to encode `bytes` bytes.
-pub fn encoded_len(bytes: usize) -> usize {
+pub const fn encoded_len(bytes: usize) -> usize {
     if bytes == 0 {
         0
     } else {
