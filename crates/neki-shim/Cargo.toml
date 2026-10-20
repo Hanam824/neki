@@ -1,12 +1,16 @@
 [package]
 name = "neki-shim"
-description = "Launcher stub that sets up PATH/DLL directories and runs a store executable"
+description = "Launcher that runs a store program with its environment, and its sidecar format"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+neki-platform.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true
