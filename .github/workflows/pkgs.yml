@@ -99,7 +99,36 @@ jobs:
             "$neki" -C "examples/$example" develop --print-env posix > /dev/null
           done
           before="$(hashes)"
-          for example in hello node-app python-tool rust-hello; do rm "examples/$example/result"; done
+          for example in hello node-app python-tool rust-hello; do
+            cp -RL "examples/$example/result" "before-$example"
+            rm "examples/$example/result"
+          done
           "$neki" store gc
           after="$(hashes)"
-          diff <(echo "$before") <(echo "$after") && echo "Every output rebuilt bit-for-bit."
+          if diff <(echo "$before") <(echo "$after"); then
+            echo "Every output rebuilt bit-for-bit."
+            exit 0
+          fi
+          # Show which files changed, and where, for the uploaded copies.
+          mkdir -p rebuild-diff
+          for example in hello node-app python-tool rust-hello; do
+            { diff -rq "before-$example" "examples/$example/result" || true; } | { grep ' differ$' || true; } | while read -r _ a _ b _; do
+              echo "::group::$a"
+              echo "$(cmp -l "$a" "$b" | wc -l || true) bytes differ, the first ones (offset, before, after):"
+              cmp -l "$a" "$b" 2> /dev/null | head -20 || true
+              if command -v readelf > /dev/null; then diff <(readelf -SW "$a") <(readelf -SW "$b") || true; fi
+              echo "::endgroup::"
+              mkdir -p "rebuild-diff/$example"
+              cp "$a" "rebuild-diff/$example/before-$(basename "$a")"
+              cp "$b" "rebuild-diff/$example/after-$(basename "$b")"
+            done
+          done
+          exit 1
+
+      - name: Upload the outputs that differ
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebuild-diff-${{ matrix.os }}
+          path: rebuild-diff
+          if-no-files-found: ignore
