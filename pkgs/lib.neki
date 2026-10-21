@@ -107,8 +107,7 @@ rec {
 
   # Build a Cargo project offline from its `Cargo.lock`: every crate is
   # downloaded by its locked checksum (or, from git, at its locked commit)
-  # into a vendor directory first. Git crates whose Cargo.toml inherits
-  # from their workspace (`workspace = true`) aren't supported.
+  # into a vendor directory first.
   # Outside Windows, `zig` provides the C linker Rust needs.
   buildRustPackage = { name, src, rust, zig ? null, cargoLock ? src + "/Cargo.lock" }:
     let
@@ -137,33 +136,81 @@ rec {
           # What Cargo.lock calls the source, without the commit.
           key = builtins.head (builtins.split "#" source);
         };
-      findCrate = crateName: dir: depth:
+      readManifest = dir:
+        if builtins.pathExists "${dir}/Cargo.toml" then builtins.fromTOML (builtins.readFile "${dir}/Cargo.toml") else { };
+      # The crate's folder, and the folders above it (nearest first).
+      findCrate = crateName: dir: parents: depth:
         let
-          manifest = dir + "/Cargo.toml";
-          here = builtins.pathExists manifest
-            && ((builtins.fromTOML (builtins.readFile manifest)).package.name or null) == crateName;
           entries = builtins.readDir dir;
           subdirs = builtins.filter (n: entries.${n} == "directory" && n != "target") (builtins.attrNames entries);
         in
-        if here then [ dir ]
+        if ((readManifest dir).package.name or null) == crateName then [ { inherit dir parents; } ]
         else if depth == 0 then [ ]
-        else builtins.concatMap (n: findCrate crateName "${dir}/${n}" (depth - 1)) subdirs;
+        else builtins.concatMap (n: findCrate crateName "${dir}/${n}" ([ dir ] ++ parents) (depth - 1)) subdirs;
       gitCrate = p:
         let
           git = parseGit p.source;
           checkout = (builtins.fetchGit { inherit (git) url rev; }).outPath;
-          found = findCrate p.name checkout 3;
+          found = findCrate p.name checkout [ ] 3;
         in
         if found == [ ] then throw "${git.url} at ${git.rev} has no crate named ${p.name}"
-        else builtins.head found;
+        else builtins.head found // { inherit git; };
+      # The crate's Cargo.toml as `cargo vendor` writes it: fields inherited
+      # from the workspace (`x.workspace = true`) filled in, path dependencies
+      # replaced by their locked versions, and what only matters inside the
+      # repository (workspace, lints, dev-dependencies, profiles) left out.
+      vendoredManifest = found:
+        let
+          manifest = readManifest found.dir;
+          roots = builtins.filter (d: (readManifest d) ? workspace) ([ found.dir ] ++ found.parents);
+          workspace = if roots == [ ] then { } else (readManifest (builtins.head roots)).workspace;
+          inherits = v: builtins.isAttrs v && (v.workspace or false) == true;
+          inherited = what: table: name:
+            table.${name} or (throw "${name} in ${found.git.url} inherits workspace.${what}.${name}, which isn't there");
+          package = removeAttrs
+            (builtins.mapAttrs (k: v: if inherits v then inherited "package" (workspace.package or { }) k else v) manifest.package)
+            # Paths inherited from the workspace are relative to it; not needed to build.
+            ([ "workspace" ] ++ builtins.filter (k: inherits (manifest.package.${k} or null)) [ "readme" "license-file" ]);
+          # The locked version of a crate from the same repository.
+          locked = name:
+            let
+              same = q: q.name == name
+                && builtins.substring 0 (builtins.stringLength found.git.key) (q.source or "") == found.git.key;
+              matches = builtins.filter same (lock.package or [ ]);
+            in
+            if matches == [ ] then "*" else "=${(builtins.head matches).version}";
+          dependency = name: d:
+            let
+              table = if builtins.isString d then { version = d; }
+                else if inherits d then
+                  let
+                    w = inherited "dependencies" (workspace.dependencies or { }) name;
+                    wt = if builtins.isString w then { version = w; } else w;
+                  in
+                  wt // removeAttrs d [ "workspace" "features" ] // { features = (wt.features or [ ]) ++ (d.features or [ ]); }
+                else d;
+            in
+            if table ? path then removeAttrs table [ "path" ] // { version = table.version or (locked (table.package or name)); }
+            else table;
+          dependencyTables = t:
+            removeAttrs t [ "dev-dependencies" "dev_dependencies" ]
+            // builtins.mapAttrs (_: builtins.mapAttrs dependency)
+              (builtins.intersectAttrs { dependencies = null; build-dependencies = null; } t);
+        in
+        toTOML (dependencyTables (removeAttrs manifest [ "workspace" "lints" "profile" "patch" "replace" ])
+          // { inherit package; }
+          // optionalAttrs (manifest ? target) { target = builtins.mapAttrs (_: dependencyTables) manifest.target; });
       vendor = assemble "${name}-vendor" ([ { path = ".keep"; text = ""; } ] ++ builtins.concatMap (p: [
         { path = "${p.name}-${p.version}"; src = crate p; }
         {
           path = "${p.name}-${p.version}/.cargo-checksum.json";
           text = builtins.toJSON { files = { }; package = p.checksum; };
         }
-      ]) crates ++ builtins.concatMap (p: [
-        { path = "git-${p.name}-${p.version}"; src = gitCrate p; }
+      ]) crates ++ builtins.concatMap (p:
+        let found = gitCrate p; in [
+        # Before the crate's files: the first file written to a path wins.
+        { path = "git-${p.name}-${p.version}/Cargo.toml"; text = vendoredManifest found; }
+        { path = "git-${p.name}-${p.version}"; src = found.dir; }
         { path = "git-${p.name}-${p.version}/.cargo-checksum.json"; text = builtins.toJSON { files = { }; }; }
       ]) gitPackages);
       # Point every git source at the vendor directory, as `cargo vendor` does.
@@ -202,8 +249,14 @@ rec {
           exec "${zig}/zig" cc -target ${zigTargets.${rust.target}} "$@"
         '';
       } ];
-      # The Windows linker stamps the build time into executables.
-      windowsFlags = if isWindows then ", '-C', 'link-arg=-Wl,--no-insert-timestamp'" else "";
+      # The Windows linker stamps the build time into executables. On Linux,
+      # which crates' compile directories end up in the leftover DWARF
+      # changes from build to build, so the debug sections are dropped (zig
+      # strips the symbols with them).
+      linkFlags =
+        if isWindows then ", '-C', 'link-arg=-Wl,--no-insert-timestamp'"
+        else if isLinux then ", '-C', 'link-arg=-Wl,--strip-debug'"
+        else "";
       targetVar = builtins.replaceStrings [ "-" ] [ "_" ] (lib_upper rust.target);
       linkerEnv = optionalAttrs (zig != null && !isWindows) {
         "CARGO_TARGET_${targetVar}_LINKER" = "${linker}/bin/zig-cc";
@@ -218,11 +271,25 @@ rec {
         # TOML literal strings: Windows paths have backslashes.
         "--config" "source.vendored.directory='${vendor}'"
         # Keep the build directory's path out of the program.
-        "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build'${windowsFlags}]"
+        "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build'${linkFlags}]"
       ] ++ gitConfig) ];
       # Stripping needs LLVM tools that the minimal toolchain doesn't have.
       env = linkerEnv // { CARGO_INCREMENTAL = "0"; CARGO_PROFILE_RELEASE_STRIP = "false"; };
     };
+
+  # `attrs` as TOML, every table written inline (enough for Cargo.toml).
+  toTOML = attrs:
+    let
+      key = builtins.toJSON;
+      value = v:
+        if builtins.isAttrs v then
+          "{ ${builtins.concatStringsSep ", " (map (k: "${key k} = ${value v.${k}}") (builtins.attrNames v))} }"
+        else if builtins.isList v then "[${builtins.concatStringsSep ", " (map value v)}]"
+        else if builtins.isBool v then (if v then "true" else "false")
+        else if builtins.isString v then builtins.toJSON v
+        else builtins.toString v;
+    in
+    builtins.concatStringsSep "" (map (k: "${key k} = ${value attrs.${k}}\n") (builtins.attrNames attrs));
 
   lib_upper = s:
     builtins.replaceStrings

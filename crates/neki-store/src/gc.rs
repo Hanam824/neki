@@ -304,7 +304,7 @@ impl LocalStore {
         let mut hasher = Hasher::new(HashAlgo::Sha256);
         io::copy(&mut fs::File::open(file).map_err(at(file))?, &mut hasher).map_err(at(file))?;
         let mut key = base32::encode(hasher.finish().digest());
-        if neki_platform::fs::is_executable(&meta) {
+        if neki_platform::fs::is_executable(file, &meta) {
             key.push_str("-x");
         }
         let link = links.join(key);

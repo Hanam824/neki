@@ -2,12 +2,13 @@ name: Packages
 
 # Builds and runs the example projects with the real package set on every
 # OS: Rust (offline from Cargo.lock), Node.js (from package-lock.json),
-# Python (with a pinned wheel) and a plain-commands project. It downloads
+# Python (with pinned wheels) and a plain-commands project, and loads a dev
+# shell into Nushell through its activation script. It downloads
 # the toolchains (about 0.5 GB per OS), so it isn't part of `CI result`.
 on:
   pull_request:
     branches: [main]
-    paths: ["pkgs/**", "examples/**", "crates/neki-build/**", "crates/neki-fetch/**", "crates/neki-core/**"]
+    paths: ["pkgs/**", "examples/**", "crates/neki-build/**", "crates/neki-fetch/**", "crates/neki-core/**", "crates/neki-platform/**", "crates/neki-profile/**"]
   schedule:
     - cron: "0 3 * * 1" # Mondays
   workflow_dispatch:
@@ -73,6 +74,15 @@ jobs:
             examples/rust-hello/result/bin/rust-hello
           fi
 
+      - name: Load a dev shell into Nushell
+        run: |
+          neki=target/release/neki
+          nu="$("$neki" build --file pkgs/default.neki -A nushell | tail -1)/nu"
+          if command -v cygpath > /dev/null; then nu="$(cygpath -u "$nu")"; fi
+          "$neki" -C examples/node-app develop --print-env nushell > env.nu
+          cat env.nu
+          "$nu" --no-config-file -c 'source env.nu; print $"($env.NEKI_SHELL): node (^node --version)"'
+
       # Deleting the outputs and building again must give the same bytes.
       # The dev shells keep the toolchains (GC roots), so only the projects
       # themselves are built again.
@@ -89,7 +99,36 @@ jobs:
             "$neki" -C "examples/$example" develop --print-env posix > /dev/null
           done
           before="$(hashes)"
-          for example in hello node-app python-tool rust-hello; do rm "examples/$example/result"; done
+          for example in hello node-app python-tool rust-hello; do
+            cp -RL "examples/$example/result" "before-$example"
+            rm "examples/$example/result"
+          done
           "$neki" store gc
           after="$(hashes)"
-          diff <(echo "$before") <(echo "$after") && echo "Every output rebuilt bit-for-bit."
+          if diff <(echo "$before") <(echo "$after"); then
+            echo "Every output rebuilt bit-for-bit."
+            exit 0
+          fi
+          # Show which files changed, and where, for the uploaded copies.
+          mkdir -p rebuild-diff
+          for example in hello node-app python-tool rust-hello; do
+            { diff -rq "before-$example" "examples/$example/result" || true; } | { grep ' differ$' || true; } | while read -r _ a _ b _; do
+              echo "::group::$a"
+              echo "$(cmp -l "$a" "$b" | wc -l || true) bytes differ, the first ones (offset, before, after):"
+              cmp -l "$a" "$b" 2> /dev/null | head -20 || true
+              if command -v readelf > /dev/null; then diff <(readelf -SW "$a") <(readelf -SW "$b") || true; fi
+              echo "::endgroup::"
+              mkdir -p "rebuild-diff/$example"
+              cp "$a" "rebuild-diff/$example/before-$(basename "$a")"
+              cp "$b" "rebuild-diff/$example/after-$(basename "$b")"
+            done
+          done
+          exit 1
+
+      - name: Upload the outputs that differ
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebuild-diff-${{ matrix.os }}
+          path: rebuild-diff
+          if-no-files-found: ignore

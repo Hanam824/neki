@@ -102,6 +102,17 @@ pub fn git_checkout(url: &str, rev: &str, dest: &Path) -> Result<()> {
             rev,
         ]),
     )?;
+    // Git only sets executable bits where the OS has them; mark the same
+    // files on every OS so the tree hashes the same.
+    let index = run(url, in_dest(&["ls-files", "--stage", "-z"]))?;
+    for entry in index.split('\0') {
+        if let Some(("100755", rest)) = entry.split_once(' ')
+            && let Some((_, file)) = rest.split_once('\t')
+        {
+            let file = dest.join(file);
+            neki_platform::fs::set_executable(&file).map_err(at(&file))?;
+        }
+    }
     let git_dir = dest.join(".git");
     neki_platform::fs::remove_tree(&git_dir).map_err(at(&git_dir))
 }

@@ -126,19 +126,30 @@ pub fn is_portable_file_name(name: &str) -> bool {
     !(["CON", "PRN", "AUX", "NUL"].contains(&stem.as_str()) || numbered("COM") || numbered("LPT"))
 }
 
-/// Whether `meta` marks the file executable. Windows has no executable bit,
-/// so there this is always false.
-pub fn is_executable(meta: &std::fs::Metadata) -> bool {
+/// Whether the regular file at `path` (with metadata `meta`) is marked
+/// executable.
+/// Windows has no executable bit, so there the mark is an empty alternate
+/// data stream, `<file>:neki-executable`, which renames, hard links and
+/// copies keep.
+pub fn is_executable(path: &Path, meta: &std::fs::Metadata) -> bool {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        meta.permissions().mode() & 0o111 != 0
+        let _ = path;
+        meta.is_file() && meta.permissions().mode() & 0o111 != 0
     }
     #[cfg(not(unix))]
     {
-        let _ = meta;
-        false
+        meta.is_file() && std::fs::metadata(exec_stream(path)).is_ok()
     }
+}
+
+/// The alternate data stream that marks a file executable on Windows.
+#[cfg(not(unix))]
+fn exec_stream(path: &Path) -> std::path::PathBuf {
+    let mut stream = path.as_os_str().to_owned();
+    stream.push(":neki-executable");
+    stream.into()
 }
 
 /// Whether the regular file at `path` (with metadata `meta`) is a program:
@@ -152,11 +163,12 @@ pub fn is_program(path: &Path, meta: &std::fs::Metadata) -> bool {
             ["exe", "cmd", "bat", "com"].contains(&e.to_ascii_lowercase().as_str())
         })
     } else {
-        is_executable(meta)
+        is_executable(path, meta)
     }
 }
 
-/// Make a file executable by everyone who can read it. No-op on Windows.
+/// Make a file executable by everyone who can read it (on Windows, mark it;
+/// see [`is_executable`]). The file must be writable.
 pub fn set_executable(path: &Path) -> io::Result<()> {
     #[cfg(unix)]
     {
@@ -167,8 +179,9 @@ pub fn set_executable(path: &Path) -> io::Result<()> {
     }
     #[cfg(not(unix))]
     {
-        let _ = path;
-        Ok(())
+        // Opening the stream of a missing file would create the file.
+        std::fs::metadata(path)?;
+        std::fs::File::create(exec_stream(path)).map(drop)
     }
 }
 
@@ -328,6 +341,38 @@ mod tests {
         assert_ne!((ia.device, ia.index), (ic.device, ic.index));
         assert_eq!(ia.links, 2);
         assert_eq!(ic.links, 1);
+    }
+
+    #[test]
+    fn executable_mark_follows_the_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let is_exec = |p: &Path| is_executable(p, &std::fs::metadata(p).unwrap());
+        let (plain, exe) = (dir.path().join("plain"), dir.path().join("exe"));
+        std::fs::write(&plain, "x").unwrap();
+        std::fs::write(&exe, "x").unwrap();
+        set_executable(&exe).unwrap();
+        assert!(is_exec(&exe) && !is_exec(&plain));
+        assert_eq!(std::fs::read_to_string(&exe).unwrap(), "x");
+        assert!(!is_exec(dir.path()));
+
+        // Kept by copies, hard links and renames.
+        let (copy, link, moved) = (
+            dir.path().join("copy"),
+            dir.path().join("link"),
+            dir.path().join("moved"),
+        );
+        std::fs::copy(&exe, &copy).unwrap();
+        hard_link(&exe, &link).unwrap();
+        std::fs::rename(&exe, &moved).unwrap();
+        assert!(is_exec(&copy) && is_exec(&link) && is_exec(&moved));
+        // Overwriting a file through a copy takes the source's mark.
+        std::fs::copy(&plain, &copy).unwrap();
+        assert!(!is_exec(&copy));
+
+        assert!(set_executable(&dir.path().join("missing")).is_err());
+        assert!(!path_exists(&dir.path().join("missing")));
+        set_readonly(&moved, true).unwrap();
+        remove_tree(dir.path()).unwrap();
     }
 
     #[test]

@@ -10,7 +10,7 @@ It follows [Nix](https://nixos.org/guides/how-nix-works/)'s design: packages liv
 
 - **Per-project environments.** A project's `neki.toml` names the tools it needs; `neki develop` opens a shell with exactly those versions, and `neki.lock` pins them.
 - **Reproducible builds.** Builds run with a scrubbed environment, only declared inputs on `PATH`, and every download checked against a hash. Building again gives the same bytes.
-- **A package set** of 50 prebuilt tools (Node.js, Python, Go, Rust, Zig, Java, Deno, Bun, ripgrep, jq, gh, kubectl, Terraform, …) for macOS, Linux and Windows, every hash taken from upstream's published checksums.
+- **A package set** of 51 prebuilt tools (Node.js, Python, Go, Rust, Zig, Java, Deno, Bun, ripgrep, jq, gh, kubectl, Terraform, …) for macOS, Linux and Windows, every hash taken from upstream's published checksums.
 - **Language adapters** that build Cargo, npm and Python projects offline from their lock files.
 - **Profiles** with generations and rollback, for tools you want everywhere.
 - **Binary caches**: sign and push builds, serve a store over HTTP, and download instead of building.
@@ -90,7 +90,7 @@ build = [["python", "build.py", "${out}"]]
 ```
 
 - `inputs` are package sources: `github:<owner>/<repo>[/<ref>]`, `git+<url>`, `path:<dir>` or an archive URL, each optionally with `?dir=<subdir>`. The first time an input is used, it's pinned in `neki.lock`; `neki lock --update <name>` moves it to the newest version.
-- `dev-shell` is the environment `neki develop` opens (`neki develop --print-env posix` or `powershell` prints a script to load it into the current shell instead).
+- `dev-shell` is the environment `neki develop` opens (`neki develop --print-env posix`, `powershell` or `nushell` prints a script to load it into the current shell instead). If `$SHELL` names `nu`, `neki develop` and `neki shell` start Nushell, on any OS.
 - `packages` are what `neki build` produces. Build steps are argument lists run without a shell, so they behave the same on every OS; `${out}` is the output folder in the store, and `${NAME}` any other build variable. A package can instead name a `.neki` file (`file = "package.neki"`) to use the language adapters, as the examples do.
 
 Packages are named `<input>.<package>`. Outside a project, `neki shell pkgs.jq` and profiles use the registry in your settings, where `pkgs` is this repository's package set.
