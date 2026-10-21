@@ -72,8 +72,11 @@ fn tar_gz() -> Vec<u8> {
 
 fn zip_archive() -> Vec<u8> {
     let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    // Made on Unix: on Windows the writer defaults to DOS, which has no
+    // executable bit.
     let options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
+        .system(zip::System::Unix)
         .unix_permissions(0o755);
     zip.add_directory("root/", options).unwrap();
     zip.start_file("root/run", options).unwrap();
