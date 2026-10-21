@@ -57,6 +57,7 @@ impl<'a> Session<'a> {
         store: Arc<LocalStore>,
         registry: &'a BTreeMap<String, String>,
         system: &str,
+        impure: bool,
         events: &'a dyn EventSink,
     ) -> Self {
         let state_dir = store.state_dir().to_path_buf();
@@ -64,6 +65,7 @@ impl<'a> Session<'a> {
             store: store.clone(),
         }));
         ev.system = system.to_string();
+        ev.pure = !impure;
         Session {
             store,
             registry,

@@ -31,6 +31,9 @@ pub struct Config {
     pub max_jobs: usize,
     /// Keep the build directory of failed builds.
     pub keep_failed: bool,
+    /// Let evaluation read environment variables and fetch without a hash
+    /// or commit (`--impure`).
+    pub impure: bool,
     /// System that builds target, e.g. `x86_64-windows`.
     pub system: String,
     /// Inputs available by name outside projects (`neki shell pkgs.x`,
@@ -53,6 +56,7 @@ impl Default for Config {
             secret_key_file: None,
             max_jobs: neki_build::BuildOptions::default().max_jobs,
             keep_failed: false,
+            impure: false,
             system: neki_derivation::host_system(),
             registry: BTreeMap::from([("pkgs".to_string(), DEFAULT_PKGS.to_string())]),
             shim: None,
@@ -71,6 +75,7 @@ struct ConfigFile {
     secret_key_file: Option<PathBuf>,
     max_jobs: Option<usize>,
     keep_failed: Option<bool>,
+    impure: Option<bool>,
     #[serde(default)]
     registry: BTreeMap<String, String>,
     shim: Option<PathBuf>,
@@ -118,6 +123,9 @@ impl Config {
         if let Some(v) = file.keep_failed {
             self.keep_failed = v;
         }
+        if let Some(v) = file.impure {
+            self.impure = v;
+        }
         self.registry.extend(file.registry);
         if let Some(v) = file.shim {
             self.shim = Some(v);
@@ -155,13 +163,14 @@ mod tests {
         let file = dir.path().join("config.toml");
         std::fs::write(
             &file,
-            "substituters = [\"file:///cache\"]\nmax-jobs = 3\n[registry]\nmine = \"path:/x\"\n",
+            "substituters = [\"file:///cache\"]\nmax-jobs = 3\nimpure = true\n[registry]\nmine = \"path:/x\"\n",
         )
         .unwrap();
         let mut config = Config::default();
         config.apply_file(&file).unwrap();
         assert_eq!(config.substituters, ["file:///cache"]);
         assert_eq!(config.max_jobs, 3);
+        assert!(config.impure);
         assert_eq!(config.registry["pkgs"], DEFAULT_PKGS);
         assert_eq!(config.registry["mine"], "path:/x");
         config.apply_env(|name| match name {

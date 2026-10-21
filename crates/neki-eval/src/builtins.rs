@@ -602,6 +602,9 @@ fn has_attr(ev: &Evaluator, args: &[Thunk]) -> Result<Value> {
 
 fn get_env(ev: &Evaluator, args: &[Thunk]) -> Result<Value> {
     let (name, _) = string(ev, &args[0])?;
+    if ev.pure {
+        return Ok(Value::string(String::new()));
+    }
     Ok(Value::string(std::env::var(name).unwrap_or_default()))
 }
 
@@ -1215,14 +1218,26 @@ fn fetched(ev: &Evaluator, name: &str, request: &FetchRequest) -> Result<Value> 
     ))
 }
 
+/// In pure evaluation, a fetch must say what it gets.
+fn pinned(ev: &Evaluator, url: &str, pinned: bool, by: &str) -> Result<()> {
+    if ev.pure && !pinned {
+        return Err(fail(format!(
+            "{url}: pure evaluation needs {by} (or use --impure)"
+        )));
+    }
+    Ok(())
+}
+
 fn fetchurl(ev: &Evaluator, args: &[Thunk]) -> Result<Value> {
     let (url, hash, name) = fetch_args(ev, &args[0])?;
+    pinned(ev, &url, hash.is_some(), "a `hash` or `sha256`")?;
     let name = name.unwrap_or_else(|| url_name(&url));
     fetched(ev, &name, &FetchRequest::Url { url, hash })
 }
 
 fn fetch_tarball(ev: &Evaluator, args: &[Thunk]) -> Result<Value> {
     let (url, hash, name) = fetch_args(ev, &args[0])?;
+    pinned(ev, &url, hash.is_some(), "a `hash` or `sha256`")?;
     fetched(
         ev,
         &name.unwrap_or_else(|| "source".into()),
@@ -1251,6 +1266,7 @@ fn fetch_git(ev: &Evaluator, args: &[Thunk]) -> Result<Value> {
             v.type_name()
         )))?,
     };
+    pinned(ev, &url, rev.is_some(), "a `rev`")?;
     let out = fetched(
         ev,
         "source",

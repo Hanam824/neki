@@ -600,3 +600,16 @@ fn sources_leave_out_what_git_ignores() {
         out
     );
 }
+
+/// Evaluation is pure unless the `impure` setting (`--impure`) is on.
+#[test]
+fn evaluation_is_pure_unless_impure_is_set() {
+    let env = Env::new();
+    let get_path = r#"builtins.getEnv "PATH""#;
+    assert_eq!(env.neki.eval(get_path, &env.root, true).unwrap(), r#""""#);
+    let impure = Neki::new(Config {
+        impure: true,
+        ..env.neki.config().clone()
+    });
+    assert_ne!(impure.eval(get_path, &env.root, true).unwrap(), r#""""#);
+}

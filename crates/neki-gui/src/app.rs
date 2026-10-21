@@ -600,6 +600,14 @@ fn show_settings(ui: &AppWindow, neki: &Neki, registry: &Registry) {
         kv("State directory", config.state_dir.display().to_string()),
         kv("System", config.system.as_str()),
         kv("Parallel builds", config.max_jobs.to_string()),
+        kv(
+            "Evaluation",
+            if config.impure {
+                "impure (reads environment variables, unpinned fetches allowed)"
+            } else {
+                "pure"
+            },
+        ),
         kv("Substituters", substituters),
         kv("Trusted keys", keys),
         kv("Registry", registry_entries.join("\n")),

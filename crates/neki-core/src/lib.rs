@@ -126,6 +126,7 @@ impl Neki {
                         store.clone(),
                         &self.config.registry,
                         &self.config.system,
+                        self.config.impure,
                         events,
                     );
                     session.update = update.iter().cloned().collect();
