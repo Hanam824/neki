@@ -516,3 +516,21 @@ fn repair_rebuilds_or_downloads_modified_paths() {
         report.failed
     );
 }
+
+/// Evaluation fetches and copies into the store, so the garbage collector
+/// (which deletes what isn't registered or rooted yet) waits for it.
+#[test]
+fn evaluation_keeps_the_garbage_collector_away() {
+    let env = Env::new();
+    let store = env.neki.store().unwrap();
+    let gc_lock = env.neki.config().state_dir.join("gc.lock");
+    env.neki
+        .session(&store, &NullSink, &[], |_| {
+            let file = fs::File::open(&gc_lock).unwrap();
+            assert!(matches!(file.try_lock(), Err(fs::TryLockError::WouldBlock)));
+            Ok(())
+        })
+        .unwrap();
+    // Free again afterwards.
+    fs::File::open(&gc_lock).unwrap().try_lock().unwrap();
+}

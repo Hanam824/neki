@@ -466,3 +466,18 @@ fn adds_wait_for_a_build_of_the_same_path() {
     });
     assert_eq!(fs::read_to_string(&location).unwrap(), "hi");
 }
+
+/// The garbage collector waits for every holder of the GC guard.
+#[test]
+fn gc_waits_for_the_guard() {
+    let t = TestStore::new();
+    let store = t.store();
+    let guard = store.gc_guard().unwrap();
+    std::thread::scope(|scope| {
+        let gc = scope.spawn(|| store.collect_garbage(&GcOptions::default()));
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert!(!gc.is_finished());
+        drop(guard);
+        gc.join().unwrap().unwrap();
+    });
+}
