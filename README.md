@@ -135,7 +135,7 @@ pkgs = "github:Hanam824/neki?dir=pkgs"
 
 ## Downloads
 
-A nightly workflow publishes a [GitHub release](https://github.com/Hanam824/neki/releases) whenever `main` has changed. Each release has archives for Windows (x86_64), macOS (Apple Silicon and Intel) and Linux (x86_64). The builds aren't signed. On macOS, run `xattr -dr com.apple.quarantine <unpacked folder>` once if macOS blocks them.
+Versions are published as [GitHub releases](https://github.com/Hanam824/neki/releases); the latest one is the current version. Every night that `main` has changed, it's also built as the `nightly` pre-release, which the next night's build replaces. Each release has archives for Windows (x86_64), macOS (Apple Silicon and Intel) and Linux (x86_64). The builds aren't signed. On macOS, run `xattr -dr com.apple.quarantine <unpacked folder>` once if macOS blocks them.
 
 ## Repository layout
 

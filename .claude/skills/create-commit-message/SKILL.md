@@ -41,7 +41,7 @@ The body always starts with a `# Summary` heading, followed by a bulleted list o
 - **body**: optional by the spec (always present in this repo, as `# Summary`). It starts after one blank line. Explain *what* changed and *why*, not how.
 - **footers**: optional. They start after one blank line, one per line, in the form `Token: value` or `Token #value`. Tokens use `-` instead of spaces (e.g. `Reviewed-by`, `Refs`). The one exception is `BREAKING CHANGE`.
 - **Breaking changes**: mark them with `!` before the `:` (e.g. `feat(store)!: ...`), with a `BREAKING CHANGE: <description>` footer, or both. `BREAKING-CHANGE` is a valid synonym. Any type can be breaking.
-- `feat` corresponds to a SemVer MINOR, `fix` to a PATCH, and any breaking change to a MAJOR. (Nightly releases still bump only the patch number; see `scripts/next-version.sh`.)
+- `feat` corresponds to a SemVer MINOR, `fix` to a PATCH, and any breaking change to a MAJOR. (Release versions are chosen by hand when running the Release workflow, `release.yml`.)
 - Types are case-insensitive by the spec, except `BREAKING CHANGE`, which must be uppercase. Use lowercase types in this repo.
 
 ### Types

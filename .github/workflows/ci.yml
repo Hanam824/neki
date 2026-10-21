@@ -1,7 +1,7 @@
 name: CI
 
 # Pull requests only: merging a pull request doesn't build again, since CI already passed on it.
-# (The nightly release builds main and keeps the cache warm for new pull requests.)
+# (The nightly build builds main and keeps the cache warm for new pull requests.)
 on:
   pull_request:
     branches: [main]
@@ -70,7 +70,7 @@ jobs:
         with:
           components: clippy, rustfmt
 
-      # The same shared key as the nightly release: pull requests can restore caches saved on main,
+      # The same shared key as the release builds: pull requests can restore caches saved on main,
       # so they start with the dependencies (Slint included) already compiled.
       - name: Build cache
         uses: Swatinem/rust-cache@v2

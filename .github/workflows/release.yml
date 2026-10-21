@@ -1,0 +1,99 @@
+name: Release
+
+# A versioned release, started by hand (Actions → Release → Run workflow): builds main on every
+# platform, then creates the tag and a GitHub release marked as the latest one.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. v0.1.1 or v0.2.0"
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  check:
+    name: Check the version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+      previous: ${{ steps.check.outputs.previous }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0 # full history and tags
+
+      - name: Check the version
+        id: check
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$VERSION is not vMAJOR.MINOR.PATCH, e.g. v0.2.0"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$VERSION" > /dev/null; then
+            echo "::error::$VERSION is already released"
+            exit 1
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          # The release notes list the changes since the previous release.
+          previous="$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || true)"
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION from $(git rev-parse --short HEAD), after ${previous:-no earlier release}"
+
+  build:
+    name: Build
+    needs: check
+    uses: ./.github/workflows/build-release.yml
+    permissions:
+      contents: read
+    with:
+      version: ${{ inputs.version }}
+      sha: ${{ needs.check.outputs.sha }}
+
+  # Runs only when every build passed, so a release always has all four archives.
+  publish:
+    name: Publish the GitHub release
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag and the release
+    steps:
+      - name: Check out the scripts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.sha }}
+
+      - name: Download the archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ needs.check.outputs.sha }}
+          PREVIOUS: ${{ needs.check.outputs.previous }}
+        run: |
+          ls -l dist
+          start=()
+          if [ -n "$PREVIOUS" ]; then start=(--notes-start-tag "$PREVIOUS"); fi
+          gh release create "$VERSION" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SHA" \
+            --title "Neki $VERSION" \
+            --latest \
+            --generate-notes "${start[@]}" \
+            --notes "Early development build. $(./scripts/release-notes.sh "$VERSION")"
