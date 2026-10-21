@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -245,4 +246,30 @@ fn activation_scripts() {
         render_activation(&tricky, Shell::Nushell),
         "$env.X = r##'a'#b'##\n"
     );
+}
+
+/// A package without programs isn't mentioned by the environment's own
+/// files, but the files merged from it can mention its dependencies, which
+/// must stay in the environment's closure.
+#[test]
+fn build_env_keeps_what_merged_files_refer_to() {
+    let env = Env::new();
+    let shim_src = env.dir.path().join("neki-shim");
+    fs::write(&shim_src, "shim binary").unwrap();
+    let shim = env.store().add_path("neki-shim", &shim_src).unwrap();
+    let dep = env.package("dep", &[("share/dep.txt", "dep")]);
+    let tmp = env.store().temp_entry();
+    fs::create_dir_all(tmp.path().join("share")).unwrap();
+    fs::write(
+        tmp.path().join("share/data.conf"),
+        format!("data = {}\n", env.location(&dep).display()),
+    )
+    .unwrap();
+    let data = env
+        .store()
+        .add_tree("data", tmp, &BTreeSet::from([dep.clone()]))
+        .unwrap();
+
+    let merged = build_env(env.store(), "env", &[data], &shim).unwrap();
+    assert!(env.store().closure(&[merged]).unwrap().contains(&dep));
 }

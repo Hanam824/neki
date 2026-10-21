@@ -208,7 +208,10 @@ fn receive(
     } else {
         Box::new(io::BufReader::new(file))
     };
-    let imported = store.import_nar(&narinfo.info, &mut reader);
+    // The garbage collector waits: the paths it refers to aren't rooted.
+    let imported = store
+        .gc_guard()
+        .and_then(|_gc| store.import_nar(&narinfo.info, &mut reader));
     drop(reader);
     let _ = fs::remove_file(&nar_file);
     imported.map_err(|e| bad(e.to_string()))

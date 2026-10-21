@@ -81,6 +81,15 @@ impl LocalStore {
         self.lock_file("store.lock", true)
     }
 
+    /// The locks for putting a tree at the location of `path`: its own
+    /// lock (see [`LocalStore::lock_path`]), so a build of it in another
+    /// process isn't deleted, then the write lock. Builders take them in
+    /// the same order.
+    pub(crate) fn install_locks(&self, path: &StorePath) -> Result<(File, File)> {
+        let path_lock = self.lock_path(path)?;
+        Ok((path_lock, self.lock()?))
+    }
+
     /// Keep the garbage collector away while the returned guard lives:
     /// builds and other work that creates paths not yet reachable from a GC
     /// root hold it. Any number of processes can hold it at once.
@@ -120,8 +129,9 @@ impl LocalStore {
     }
 
     /// Move the finished entry `tmp` to its store location, make it
-    /// read-only and register it. The caller holds the write lock and has
-    /// checked that the path isn't valid yet.
+    /// read-only and register it. The caller holds the path's
+    /// [`LocalStore::install_locks`] and has checked that the path isn't
+    /// valid yet.
     pub(crate) fn install(&self, tmp: &Path, info: &PathInfo) -> Result<()> {
         let dest = self.dir.to_path(&info.path);
         // Left over from an add that was interrupted before registering.
@@ -145,7 +155,7 @@ impl LocalStore {
         if self.is_valid_path(&path)? {
             return Ok(path);
         }
-        let _lock = self.lock()?;
+        let _locks = self.install_locks(&path)?;
         if self.is_valid_path(&path)? {
             return Ok(path);
         }
@@ -209,7 +219,7 @@ impl LocalStore {
         if self.is_valid_path(&path)? {
             return Ok(path);
         }
-        let _lock = self.lock()?;
+        let _locks = self.install_locks(&path)?;
         if !self.is_valid_path(&path)? {
             self.install(
                 tmp.path(),
@@ -290,7 +300,7 @@ impl LocalStore {
                 got: hash.to_sri(),
             });
         }
-        let _lock = self.lock()?;
+        let _locks = self.install_locks(path)?;
         let dest = self.dir.to_path(path);
         neki_platform::fs::remove_tree(&dest).map_err(at(&dest))?;
         fs::rename(fixed, &dest).map_err(at(&dest))?;
@@ -369,7 +379,7 @@ impl LocalStore {
         if self.is_valid_path(&path)? {
             return Ok(path);
         }
-        let _lock = self.lock()?;
+        let _locks = self.install_locks(&path)?;
         if !self.is_valid_path(&path)? {
             self.install(&tmp.0, &new_info(path.clone(), hash, size, references))?;
         }

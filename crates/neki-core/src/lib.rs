@@ -106,7 +106,8 @@ impl Neki {
     }
 
     /// Run `f` with a [`Session`] on a thread with a big stack, then save
-    /// the lock files it changed.
+    /// the lock files it changed. The garbage collector waits meanwhile:
+    /// evaluation fetches and copies into the store.
     fn session<T: Send>(
         &self,
         store: &Arc<LocalStore>,
@@ -114,6 +115,7 @@ impl Neki {
         update: &[String],
         f: impl FnOnce(&mut Session) -> Result<T> + Send,
     ) -> Result<T> {
+        let _gc = store.gc_guard()?;
         std::thread::scope(|scope| {
             let handle = std::thread::Builder::new()
                 .name("neki-eval".into())
@@ -908,6 +910,9 @@ impl Neki {
             .map(|k| PublicKey::parse(k))
             .collect::<Result<Vec<_>, _>>()?;
         let store = self.store()?;
+        // Each path is imported after the paths it refers to, which aren't
+        // rooted yet.
+        let _gc = store.gc_guard()?;
         let cache = BinaryCache::new(url, keys);
         let mut fetched = Vec::new();
         for p in paths {
