@@ -54,6 +54,10 @@ pub struct Evaluator {
     pub(crate) store: Option<Rc<dyn EvalStore>>,
     /// `builtins.currentSystem`.
     pub system: String,
+    /// Pure evaluation (the default): the result depends only on the files
+    /// read, so `builtins.getEnv` gives `""` and fetches must be pinned by a
+    /// hash or a commit.
+    pub pure: bool,
     pub(crate) base: Env,
     imports: RefCell<HashMap<PathBuf, Value>>,
     copied: RefCell<HashMap<PathBuf, StorePath>>,
@@ -80,6 +84,7 @@ impl Evaluator {
             search_path: Vec::new(),
             store,
             system: neki_derivation::host_system(),
+            pure: true,
             base: Scope::vars(HashMap::new(), None),
             imports: RefCell::default(),
             copied: RefCell::default(),

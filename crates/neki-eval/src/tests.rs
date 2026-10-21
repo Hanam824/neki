@@ -519,3 +519,30 @@ fn golden_drv_path() {
 
 const GOLDEN_DRV: &str = "b8mxwkbgcwh1la9xwz1fr0d40v971xqh-golden.drv";
 const GOLDEN_OUT: &str = "/opt/neki/store/qq5ihbrcqnp2llyam289mrrysvdq04w7-golden";
+
+/// Pure evaluation (the default) doesn't read the environment and refuses
+/// fetches that a hash or commit doesn't pin; `pure = false` allows both.
+#[test]
+fn pure_evaluation() {
+    let get_path = r#"builtins.getEnv "PATH""#;
+    assert_eq!(eval(get_path), r#""""#);
+    let unpinned = [
+        r#"builtins.fetchurl "https://example.org/a""#,
+        r#"builtins.fetchTarball { url = "https://example.org/a.tar.gz"; }"#,
+        r#"builtins.fetchGit { url = "https://example.org/r.git"; ref = "main"; }"#,
+    ];
+    for src in unpinned {
+        let err = eval_err(src);
+        assert!(err.contains("pure evaluation needs"), "{src}: {err}");
+    }
+
+    let mut ev = Evaluator::new();
+    ev.pure = false;
+    let path = ev.eval_str(get_path, Path::new("/project")).unwrap();
+    assert_ne!(ev.print(&path).unwrap(), r#""""#);
+    for src in unpinned {
+        // Allowed now; it fails later only because there's no store.
+        let err = ev.eval_str(src, Path::new("/project")).unwrap_err();
+        assert!(!err.to_string().contains("pure evaluation"), "{src}: {err}");
+    }
+}

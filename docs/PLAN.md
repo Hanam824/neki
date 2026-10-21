@@ -52,11 +52,13 @@ Rule: one behaviour on every OS. Where the OS mechanism differs but the behaviou
 **Language and evaluation:**
 - Nix-language subset: let/rec/with/inherit, lambdas with patterns, lazy attrsets, string context, `import`, `derivation`, and core builtins (`fetchurl`, `fetchTarball`, `fetchGit`, `path`, `toFile`, `readFile`, `map`, `filter`, `attrNames`, `toJSON`, `fromJSON`, `hashString`, …)
 - `neki.toml` simple front end, which compiles to the same derivations
+- Pure evaluation by default, as in flakes: `builtins.getEnv` returns `""`, and `fetchurl`/`fetchTarball` need a hash and `fetchGit` a `rev`; `--impure` (or `impure = true` in the settings) allows them
 - Overlays/overrides (`override`, `overrideAttrs`) in our own package set library
 
 **Projects (flake-like):**
 - A per-project `neki.toml` (`[project]`, `[inputs]`, `[dev-shell]`, `[packages.<name>]`; see `examples/hello`), later also a Nix-language `flake.neki`
 - A lock file (`neki.lock`, JSON) and `neki lock --update <input>`
+- In a git work tree, a project's source (and a `path:` input) is what git lists: tracked files and untracked ones that `.gitignore` doesn't exclude, so build results don't change source hashes
 - Dev shells: `neki develop` and `neki shell pkgA pkgB` (ad hoc)
 - `neki build` → a `result` link, `neki run`
 
@@ -177,6 +179,7 @@ Parked until a solution exists that behaves the same on Windows, macOS and Linux
 - cmd / fish activation (cmd is Windows-only; fish has no native Windows build), direnv-style auto-activation (P12)
 - Windows delete-on-reboot and a Defender exclusion helper (P14)
 - OS-level declarative configuration (P15)
+- Rust programs built on Linux differ between builds in their DWARF debug info (which crates' compile units are kept); the cause isn't known, so `pkgs/lib.neki` links them with `--strip-debug` there
 
 ---
 

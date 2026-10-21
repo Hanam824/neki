@@ -1,16 +1,19 @@
 //! Git sources, through the `git` command, and GitHub's tarball API.
 
+use std::collections::BTreeSet;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use crate::{Error, Result, at, http_get};
 
 /// Settings that make a checkout byte-identical on every OS: no line-ending
-/// conversion and no system configuration.
+/// conversion, paths longer than Windows' old 260-character limit, and no
+/// system configuration.
 fn git() -> Command {
     let mut cmd = Command::new("git");
     cmd.args(["-c", "core.autocrlf=false", "-c", "core.eol=lf"])
+        .args(["-c", "core.longpaths=true"])
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdin(Stdio::null());
@@ -55,6 +58,61 @@ fn run(url: &str, mut cmd: Command) -> Result<String> {
         });
     }
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// The files of the directory `dir` that belong in a copy of it, relative
+/// to it, if it's in a git work tree: those git tracks, and untracked ones
+/// that aren't ignored. `None` outside a work tree, or if the work tree
+/// ignores `dir` itself (a home directory kept in git, say). Only the
+/// repository's own ignore rules count, not the user's global ones, so the
+/// copy is the same on every machine.
+pub fn git_source_files(dir: &Path) -> Result<Option<BTreeSet<PathBuf>>> {
+    let dir = std::path::absolute(dir).map_err(at(dir))?;
+    if !dir.ancestors().any(|d| d.join(".git").exists()) {
+        return Ok(None);
+    }
+    let failed = |reason: String| Error::SourceFiles {
+        dir: dir.clone(),
+        reason,
+    };
+    let git_in_dir = |args: &[&str]| {
+        let mut cmd = isolated_git();
+        cmd.arg("-C").arg(&dir).args(args);
+        cmd.output().map_err(|err| {
+            failed(if err.kind() == std::io::ErrorKind::NotFound {
+                "it's in a git repository, and listing its files needs the `git` program on PATH"
+                    .into()
+            } else {
+                err.to_string()
+            })
+        })
+    };
+    // Exit code 0: ignored, 1: not ignored.
+    if git_in_dir(&["check-ignore", "--quiet", "--", "."])?
+        .status
+        .success()
+    {
+        return Ok(None);
+    }
+    let out = git_in_dir(&[
+        "ls-files",
+        "-z",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+    ])?;
+    if !out.status.success() {
+        return Err(failed(
+            String::from_utf8_lossy(&out.stderr).trim().to_string(),
+        ));
+    }
+    Ok(Some(
+        String::from_utf8_lossy(&out.stdout)
+            .split('\0')
+            .filter(|f| !f.is_empty())
+            .map(|f| f.split('/').collect())
+            .collect(),
+    ))
 }
 
 /// The commit that `reference` (a branch or tag; `HEAD` if `None`) points
@@ -102,11 +160,13 @@ pub fn git_checkout(url: &str, rev: &str, dest: &Path) -> Result<()> {
         cmd.arg("-C").arg(dest).args(args);
         cmd
     };
-    // No templates: they could install hooks.
-    run(
-        url,
-        in_dest(isolated_git(), &["init", "--quiet", "--template="]),
-    )?;
+    // No templates: they could install hooks. The repository must use the
+    // same hash function as the remote.
+    let mut init = vec!["init", "--quiet", "--template="];
+    if rev.len() == 64 {
+        init.push("--object-format=sha256");
+    }
+    run(url, in_dest(isolated_git(), &init))?;
     // Most servers allow fetching a single commit; otherwise fetch everything.
     if run(
         url,

@@ -360,10 +360,17 @@ fn git_arguments_are_not_options() {
     let marker = dir.path().join("ran");
     let url = format!("--upload-pack=touch {};false", marker.display());
     let rev = "0".repeat(40);
-    assert!(git_checkout(&url, &rev, &dir.path().join("a")).is_err());
+    fn starts_with_dash<T: std::fmt::Debug>(result: Result<T>) {
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("starts with `-`"), "{err}");
+    }
+    starts_with_dash(git_checkout(&url, &rev, &dir.path().join("a")));
     assert!(git_checkout(&url, ".", &dir.path().join("b")).is_err());
-    assert!(git_resolve(&url, None).is_err());
-    assert!(git_resolve(dir.path().to_str().unwrap(), Some("--upload-pack=x")).is_err());
+    starts_with_dash(git_resolve(&url, None));
+    starts_with_dash(git_resolve(
+        dir.path().to_str().unwrap(),
+        Some("--upload-pack=x"),
+    ));
     assert!(!marker.exists());
     // Not a commit hash: refused before anything is fetched.
     let err = git_checkout(dir.path().to_str().unwrap(), "main", &dir.path().join("c"));
@@ -413,5 +420,26 @@ fn git_checkout_keeps_or_refuses_symlinks() {
         ),
         Err(err) => assert!(err.to_string().contains("symbolic links"), "{err}"),
     }
+    neki_platform::fs::remove_tree(dir.path()).unwrap();
+}
+
+/// A repository that uses SHA-256 object names is checked out by its
+/// 64-character commit hash.
+#[test]
+fn git_checkout_of_a_sha256_repository() {
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    fs::create_dir(&repo).unwrap();
+    let git = |args: &[&str]| git_in(&repo, args);
+    git(&["init", "--quiet", "--object-format=sha256"]);
+    fs::write(repo.join("README"), "hi\n").unwrap();
+    git(&["add", "README"]);
+    git(&["commit", "--quiet", "-m", "init"]);
+    let rev = git(&["rev-parse", "HEAD"]);
+    assert_eq!(rev.trim().len(), 64);
+
+    let dest = dir.path().join("checkout");
+    git_checkout(repo.to_str().unwrap(), rev.trim(), &dest).unwrap();
+    assert_eq!(fs::read_to_string(dest.join("README")).unwrap(), "hi\n");
     neki_platform::fs::remove_tree(dir.path()).unwrap();
 }

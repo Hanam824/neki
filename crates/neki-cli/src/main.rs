@@ -30,6 +30,10 @@ struct Cli {
     /// How to print progress on stderr.
     #[arg(long, global = true, value_enum, default_value_t = LogFormat::Text)]
     log_format: LogFormat,
+    /// Let evaluation read environment variables (`builtins.getEnv`) and
+    /// fetch without a hash or commit.
+    #[arg(long, global = true)]
+    impure: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -316,7 +320,9 @@ impl Output {
 }
 
 fn run(cli: Cli) -> Result<ExitCode> {
-    let neki = Neki::new(Config::from_env());
+    let mut config = Config::from_env();
+    config.impure |= cli.impure;
+    let neki = Neki::new(config);
     let dir = match cli.dir {
         Some(dir) => dir,
         None => std::env::current_dir()?,

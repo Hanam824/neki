@@ -460,6 +460,13 @@ fn repair_rebuilds_or_downloads_modified_paths() {
     assert_eq!(fs::read(&program).unwrap(), original);
     assert!(env.neki.verify().unwrap().is_empty());
     assert!(fs::metadata(&program).unwrap().permissions().readonly());
+    // The damaged copy was moved aside, then deleted.
+    let leftovers = fs::read_dir(&env.neki.config().store_dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with('.'))
+        .collect::<Vec<_>>();
+    assert!(leftovers.is_empty(), "{leftovers:?}");
 
     // Downloaded from a binary cache, which is tried first.
     let key = env.neki.cache_keygen("repair-1").unwrap();
@@ -542,4 +549,74 @@ fn evaluation_keeps_the_garbage_collector_away() {
         );
         std::thread::sleep(Duration::from_millis(20));
     }
+}
+
+/// In a git work tree, sources (the project's and `path:` inputs) are what
+/// git lists: tracked files and untracked ones that aren't ignored.
+#[test]
+fn sources_leave_out_what_git_ignores() {
+    let env = Env::new();
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&env.root)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    };
+    git(&["init", "--quiet"]);
+    fs::write(
+        env.root.join(".gitignore"),
+        "target/\njunk\n/store/\n/var/\n",
+    )
+    .unwrap();
+    let app = env.root.join("app");
+    fs::create_dir(app.join("target")).unwrap();
+    fs::write(app.join("target/out"), "1").unwrap();
+    fs::write(env.root.join("pkgs/junk"), "1").unwrap();
+    fs::write(app.join("new.txt"), "untracked").unwrap();
+
+    let out = env.neki.build(&env.project(), None, &NullSink).unwrap();
+    let store = env.neki.store().unwrap();
+    let drv = store
+        .query_path_info(&out[0])
+        .unwrap()
+        .unwrap()
+        .deriver
+        .unwrap();
+    let src = PathBuf::from(&store.read_derivation(&drv).unwrap().env["src"]);
+    assert!(src.join("main.txt").is_file() && src.join("new.txt").is_file());
+    assert!(!src.join("target").exists() && !src.join("ignored.txt").exists());
+    let sources: Vec<PathBuf> = fs::read_dir(&env.neki.config().store_dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.to_string_lossy().ends_with("-source"))
+        .collect();
+    assert!(sources.iter().any(|p| p.join("default.neki").is_file()));
+    assert!(sources.iter().all(|p| !p.join("junk").exists()));
+
+    // Ignored files don't change the source.
+    fs::write(app.join("target/out"), "2").unwrap();
+    assert_eq!(
+        env.neki.build(&env.project(), None, &NullSink).unwrap(),
+        out
+    );
+}
+
+/// Evaluation is pure unless the `impure` setting (`--impure`) is on.
+#[test]
+fn evaluation_is_pure_unless_impure_is_set() {
+    let env = Env::new();
+    let get_path = r#"builtins.getEnv "PATH""#;
+    assert_eq!(env.neki.eval(get_path, &env.root, true).unwrap(), r#""""#);
+    let impure = Neki::new(Config {
+        impure: true,
+        ..env.neki.config().clone()
+    });
+    assert_ne!(impure.eval(get_path, &env.root, true).unwrap(), r#""""#);
 }

@@ -90,6 +90,7 @@ build = [["python", "build.py", "${out}"]]
 ```
 
 - `inputs` are package sources: `github:<owner>/<repo>[/<ref>]`, `git+<url>`, `path:<dir>` or an archive URL, each optionally with `?dir=<subdir>`. The first time an input is used, it's pinned in `neki.lock`; `neki lock --update <name>` moves it to the newest version.
+- In a git repository, a project's source is what git lists: tracked files and untracked ones that `.gitignore` doesn't exclude, so `target/` or `node_modules/` don't change it. Elsewhere, everything except `.git`, `result*` and the package's `exclude` list is copied.
 - `dev-shell` is the environment `neki develop` opens (`neki develop --print-env posix`, `powershell` or `nushell` prints a script to load it into the current shell instead). If `$SHELL` names `nu`, `neki develop` and `neki shell` start Nushell, on any OS.
 - `packages` are what `neki build` produces. Build steps are argument lists run without a shell, so they behave the same on every OS; `${out}` is the output folder in the store, and `${NAME}` any other build variable. A package can instead name a `.neki` file (`file = "package.neki"`) to use the language adapters, as the examples do.
 
@@ -98,6 +99,8 @@ Packages are named `<input>.<package>`. Outside a project, `neki shell pkgs.jq` 
 ## Commands
 
 Every command accepts `--json` (the result as JSON) and `--log-format json` (progress as JSON lines on stderr).
+
+Evaluation is pure: `builtins.getEnv` returns `""`, and a `fetchurl` or `fetchTarball` needs a hash and a `fetchGit` a `rev`. `--impure` (or `impure = true` in `config.toml`) allows them.
 
 | Command | Purpose |
 |---|---|

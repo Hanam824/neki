@@ -103,7 +103,8 @@ fn make_tree_writable(path: &Path) -> io::Result<()> {
 
 /// Whether `name` is a valid file name on every supported OS, so that store
 /// contents can be unpacked anywhere. Rejects `.` and `..`, Windows reserved
-/// names (`CON`, `NUL`, `COM1`, … with or without an extension), the
+/// names (`CON`, `NUL`, `CONIN$`, `COM1`, `COM¹`, … with or without an
+/// extension), the
 /// characters `<>:"/\|?*` and control characters, trailing dots or spaces,
 /// and names longer than 255 bytes.
 pub fn is_portable_file_name(name: &str) -> bool {
@@ -120,10 +121,18 @@ pub fn is_portable_file_name(name: &str) -> bool {
         return false;
     }
     let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
+    // Windows also reserves the superscript digits ¹ ² ³ here.
     let numbered = |prefix: &str| {
-        stem.len() == 4 && stem.starts_with(prefix) && matches!(stem.as_bytes()[3], b'1'..=b'9')
+        stem.strip_prefix(prefix).is_some_and(|n| {
+            matches!(
+                n,
+                "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+            )
+        })
     };
-    !(["CON", "PRN", "AUX", "NUL"].contains(&stem.as_str()) || numbered("COM") || numbered("LPT"))
+    !(["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"].contains(&stem.as_str())
+        || numbered("COM")
+        || numbered("LPT"))
 }
 
 /// Whether the regular file at `path` (with metadata `meta`) is marked
@@ -282,6 +291,10 @@ mod tests {
             "COM1",
             "lpt9.log",
             "aux.tar.gz",
+            "CONIN$",
+            "conout$.txt",
+            "COM¹",
+            "lpt³.x",
             "a:b",
             "a/b",
             "a\\b",
