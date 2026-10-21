@@ -13,6 +13,7 @@ pub enum HashAlgo {
 }
 
 impl HashAlgo {
+    /// The name used in hash strings, such as the `sha256` in `sha256-…`.
     pub fn name(self) -> &'static str {
         match self {
             HashAlgo::Sha256 => "sha256",
@@ -20,6 +21,7 @@ impl HashAlgo {
         }
     }
 
+    /// The length of a digest in bytes: 32 for SHA-256, 64 for SHA-512.
     pub fn digest_len(self) -> usize {
         match self {
             HashAlgo::Sha256 => 32,
@@ -27,6 +29,7 @@ impl HashAlgo {
         }
     }
 
+    /// The algorithm called `name` (`sha256` or `sha512`); fails on any other.
     pub fn from_name(name: &str) -> Result<Self> {
         match name {
             "sha256" => Ok(HashAlgo::Sha256),
@@ -52,6 +55,8 @@ pub struct Hash {
 }
 
 impl Hash {
+    /// A hash from an existing `digest`, which must be
+    /// [`HashAlgo::digest_len`] bytes long.
     pub fn new(algo: HashAlgo, digest: Vec<u8>) -> Result<Self> {
         if digest.len() != algo.digest_len() {
             return Err(Error::InvalidHash(format!(
@@ -62,6 +67,19 @@ impl Hash {
         Ok(Self { algo, digest })
     }
 
+    /// The hash of `data`. Use a [`Hasher`] to hash a stream instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neki_hash::{Hash, HashAlgo};
+    /// let hash = Hash::of_bytes(HashAlgo::Sha256, b"abc");
+    /// assert_eq!(
+    ///     hash.to_base16(),
+    ///     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    /// );
+    /// assert_eq!(Hash::parse(&hash.to_sri()).unwrap(), hash);
+    /// ```
     pub fn of_bytes(algo: HashAlgo, data: &[u8]) -> Hash {
         let mut hasher = Hasher::new(algo);
         hasher.update(data);
@@ -103,10 +121,12 @@ impl Hash {
         Self::new(algo, digest).ok()
     }
 
+    /// The algorithm that produced the digest.
     pub fn algo(&self) -> HashAlgo {
         self.algo
     }
 
+    /// The raw digest bytes.
     pub fn digest(&self) -> &[u8] {
         &self.digest
     }
@@ -146,6 +166,7 @@ enum State {
 }
 
 impl Hasher {
+    /// A hasher with nothing hashed yet.
     pub fn new(algo: HashAlgo) -> Self {
         let state = match algo {
             HashAlgo::Sha256 => State::Sha256(sha2::Sha256::new()),
@@ -154,6 +175,7 @@ impl Hasher {
         Self { state, bytes: 0 }
     }
 
+    /// Hash `data` after what was hashed before.
     pub fn update(&mut self, data: &[u8]) {
         match &mut self.state {
             State::Sha256(state) => state.update(data),
@@ -167,6 +189,7 @@ impl Hasher {
         self.bytes
     }
 
+    /// The hash of everything given to [`Hasher::update`] (or written).
     pub fn finish(self) -> Hash {
         let (algo, digest) = match self.state {
             State::Sha256(state) => (HashAlgo::Sha256, state.finalize().to_vec()),

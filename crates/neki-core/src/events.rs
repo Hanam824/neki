@@ -34,6 +34,7 @@ pub enum Event {
 
 /// Receiver of [`Event`]s. `Sync` because builds report from worker threads.
 pub trait EventSink: Sync {
+    /// Handle `event`. It's called from the thread that produced it.
     fn event(&self, event: Event);
 }
 

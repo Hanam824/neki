@@ -23,6 +23,20 @@ pub struct Shim {
 }
 
 impl Shim {
+    /// The sidecar text that [`Shim::parse`] reads back.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neki_shim::Shim;
+    /// let shim = Shim {
+    ///     target: "/s/bin/node".into(),
+    ///     path: vec!["/s/bin".into()],
+    ///     env: vec![],
+    /// };
+    /// assert_eq!(shim.to_text(), "target = /s/bin/node\npath = /s/bin\n");
+    /// assert_eq!(Shim::parse(&shim.to_text()), Some(shim));
+    /// ```
     pub fn to_text(&self) -> String {
         let mut out = format!("target = {}\n", self.target.display());
         for dir in &self.path {
@@ -34,6 +48,9 @@ impl Shim {
         out
     }
 
+    /// Read a sidecar written by [`Shim::to_text`]. Blank lines and lines
+    /// starting with `#` are skipped; `None` if there's no `target` or a line
+    /// isn't `<key> = <value>`.
     pub fn parse(text: &str) -> Option<Shim> {
         let mut shim = Shim::default();
         let mut target = None;

@@ -31,6 +31,8 @@ pub struct NarInfo {
 }
 
 impl NarInfo {
+    /// Parse a `.narinfo` file. Its `StorePath` must be under `store_dir`,
+    /// and `Compression` defaults to `bzip2`, as in Nix.
     pub fn parse(s: &str, store_dir: &StoreDir) -> Result<Self> {
         let bad = |m: String| Error::InvalidNarInfo(m);
         let (mut path, mut url, mut nar_hash, mut nar_size) = (None, None, None, None);
@@ -99,6 +101,8 @@ impl NarInfo {
         })
     }
 
+    /// The `.narinfo` text that [`NarInfo::parse`] reads back, with paths in
+    /// full under `store_dir`.
     pub fn to_text(&self, store_dir: &StoreDir) -> String {
         let i = &self.info;
         let mut out = format!(

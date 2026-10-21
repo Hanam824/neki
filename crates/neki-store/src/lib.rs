@@ -93,10 +93,14 @@ pub struct PathInfo {
 
 /// Operations shared by the local store and remote binary caches.
 pub trait Store {
+    /// The store's directory, which every path is under.
     fn store_dir(&self) -> &StoreDir;
 
+    /// What's recorded about `path`, or `None` if it isn't valid (not in the
+    /// store, or not registered yet).
     fn query_path_info(&self, path: &StorePath) -> Result<Option<PathInfo>>;
 
+    /// Whether `path` is in the store and registered.
     fn is_valid_path(&self, path: &StorePath) -> Result<bool> {
         Ok(self.query_path_info(path)?.is_some())
     }

@@ -44,6 +44,8 @@ fn split(s: &str) -> Result<(&str, Vec<u8>)> {
 }
 
 impl PublicKey {
+    /// Parse `<name>:<base64>`, the form used in `trusted-public-keys`; the
+    /// key is 32 bytes.
     pub fn parse(s: &str) -> Result<Self> {
         let (name, bytes) = split(s)?;
         let key = bytes
@@ -95,6 +97,8 @@ impl SecretKey {
         })
     }
 
+    /// Parse `<name>:<base64>`, the form [`SecretKey::to_text`] writes; the
+    /// key is the 64-byte ed25519 key pair, and it must be valid.
     pub fn parse(s: &str) -> Result<Self> {
         let (name, bytes) = split(s)?;
         let key: [u8; 64] = bytes
@@ -112,6 +116,8 @@ impl SecretKey {
         SigningKey::from_keypair_bytes(&self.key).expect("checked when parsed or generated")
     }
 
+    /// The public key that verifies this key's signatures, with the same
+    /// name.
     pub fn public(&self) -> PublicKey {
         PublicKey {
             name: self.name.clone(),

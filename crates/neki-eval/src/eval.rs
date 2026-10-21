@@ -71,6 +71,8 @@ impl Evaluator {
         Self::build(None)
     }
 
+    /// An evaluator that writes derivations, copied paths and fetches to
+    /// `store`.
     pub fn with_store(store: Rc<dyn EvalStore>) -> Self {
         Self::build(Some(store))
     }
@@ -88,6 +90,8 @@ impl Evaluator {
         ev
     }
 
+    /// Evaluate the file at `path`, like `import path` (a directory means its
+    /// `default.neki`). Each file is evaluated once and the value reused.
     pub fn eval_file(&mut self, path: &Path) -> Result<Value> {
         self.import(path)
     }

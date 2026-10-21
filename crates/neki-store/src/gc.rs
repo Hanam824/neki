@@ -83,16 +83,20 @@ impl LocalStore {
         Ok(())
     }
 
+    /// Delete the GC root called `name`, if there is one. What it kept alive
+    /// can then be collected.
     pub fn remove_root(&self, name: &str) -> Result<()> {
         self.db()
             .execute("DELETE FROM Roots WHERE name = ?1", [name])?;
         Ok(())
     }
 
+    /// The GC root called `name`, if there is one.
     pub fn root(&self, name: &str) -> Result<Option<Root>> {
         Ok(self.roots()?.into_iter().find(|r| r.name == name))
     }
 
+    /// Every GC root, sorted by name.
     pub fn roots(&self) -> Result<Vec<Root>> {
         let db = self.db();
         let mut stmt = db.prepare("SELECT name, path, link FROM Roots ORDER BY name")?;

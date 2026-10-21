@@ -45,6 +45,7 @@ pub type PathFilter<'a> = &'a mut dyn FnMut(&Path, &str) -> Result<bool>;
 /// What evaluation needs from the store: `derivation`, path literals in
 /// strings, `builtins.toFile` and the fetchers write to it.
 pub trait EvalStore {
+    /// The store's directory, which store paths in strings are written under.
     fn store_dir(&self) -> &StoreDir;
     /// Copy `path` into the store, keeping what `filter` accepts.
     fn add_path(
@@ -53,6 +54,8 @@ pub trait EvalStore {
         path: &Path,
         filter: Option<PathFilter>,
     ) -> Result<StorePath, String>;
+    /// Store `text` as a file named `name` that refers to `refs`
+    /// (`builtins.toFile`).
     fn add_text(
         &self,
         name: &str,
@@ -61,6 +64,7 @@ pub trait EvalStore {
     ) -> Result<StorePath, String>;
     /// Store a finalized derivation.
     fn add_derivation(&self, drv: &Derivation) -> Result<StorePath, String>;
+    /// Read the derivation stored at `path` (a `.drv` path).
     fn read_derivation(&self, path: &StorePath) -> Result<Derivation, String>;
     /// Fetch at evaluation time (`builtins.fetchurl`, `fetchTarball`,
     /// `fetchGit`).

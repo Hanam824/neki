@@ -83,10 +83,22 @@ fn default_src() -> String {
 }
 
 impl Manifest {
+    /// Parse `neki.toml` text. Unknown keys are errors, so typos don't go
+    /// unnoticed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neki_project::Manifest;
+    /// let manifest = Manifest::parse("[project]\nname = \"app\"\n").unwrap();
+    /// assert_eq!(manifest.project.name, "app");
+    /// assert!(Manifest::parse("[project]\nname = \"app\"\nnmae = 1\n").is_err());
+    /// ```
     pub fn parse(s: &str) -> Result<Self, toml::de::Error> {
         toml::from_str(s)
     }
 
+    /// Read and parse the `neki.toml` at `path`.
     pub fn from_file(path: &Path) -> Result<Self> {
         Self::parse(&crate::read(path)?).map_err(|err| Error::Parse {
             path: path.to_path_buf(),

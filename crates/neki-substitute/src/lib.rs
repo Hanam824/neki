@@ -68,6 +68,8 @@ pub struct BinaryCache {
 }
 
 impl BinaryCache {
+    /// The cache at `url` (a trailing `/` is dropped). Its paths are used
+    /// only if signed by one of `trusted_keys`.
     pub fn new(url: impl Into<String>, trusted_keys: Vec<PublicKey>) -> Self {
         Self {
             url: url.into().trim_end_matches('/').to_string(),

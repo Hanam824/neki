@@ -50,6 +50,8 @@ mod store_path {
 }
 
 impl Profile {
+    /// The profile called `name` under `state_dir`. Nothing is created until
+    /// the first [`Profile::switch`].
     pub fn open(state_dir: &Path, name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -57,6 +59,7 @@ impl Profile {
         }
     }
 
+    /// The profile's directory, `<state dir>/profiles/<name>`.
     pub fn dir(&self) -> &Path {
         &self.dir
     }
@@ -98,6 +101,8 @@ impl Profile {
         Ok(out)
     }
 
+    /// The current generation, or `None` if the profile has none yet. Fails
+    /// if the profile's files are damaged.
     pub fn current(&self) -> Result<Option<Generation>> {
         let file = self.dir.join("current-generation");
         let Ok(text) = fs::read_to_string(&file) else {

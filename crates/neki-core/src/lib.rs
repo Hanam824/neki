@@ -80,6 +80,7 @@ pub struct Neki {
 }
 
 impl Neki {
+    /// Neki with `config`. Nothing is opened until an operation needs it.
     pub fn new(config: Config) -> Self {
         Self {
             config,
@@ -87,6 +88,7 @@ impl Neki {
         }
     }
 
+    /// The settings this instance uses.
     pub fn config(&self) -> &Config {
         &self.config
     }
@@ -761,6 +763,7 @@ impl Neki {
 
     // ----- profiles -----
 
+    /// The profile called `name` (it may not exist yet).
     pub fn profile(&self, name: &str) -> Profile {
         Profile::open(&self.config.state_dir, name)
     }
@@ -790,6 +793,9 @@ impl Neki {
         Ok(self.profile(profile).switch(&store, &env, &packages)?)
     }
 
+    /// Add `packages` (registry `<input>.<package>` names) to `profile`,
+    /// building them if needed, and make that the new current generation.
+    /// Packages already installed stay as they are.
     pub fn profile_install(
         &self,
         profile: &str,
@@ -809,6 +815,8 @@ impl Neki {
         self.profile_set(profile, list, events)
     }
 
+    /// Remove `packages` from `profile` as a new generation. Fails if one of
+    /// them isn't installed.
     pub fn profile_remove(
         &self,
         profile: &str,
@@ -853,16 +861,19 @@ impl Neki {
         self.profile_set(profile, list, events)
     }
 
+    /// Make the generation before the current one current again.
     pub fn profile_rollback(&self, profile: &str) -> Result<Generation> {
         Ok(self.profile(profile).rollback(&*self.store()?)?)
     }
 
+    /// Make the existing generation numbered `generation` current.
     pub fn profile_switch(&self, profile: &str, generation: u32) -> Result<Generation> {
         Ok(self
             .profile(profile)
             .switch_to(&*self.store()?, generation)?)
     }
 
+    /// Every generation of `profile`, oldest first.
     pub fn profile_generations(&self, profile: &str) -> Result<Vec<Generation>> {
         Ok(self.profile(profile).generations()?)
     }

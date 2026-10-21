@@ -29,6 +29,7 @@ pub struct LockedInput {
 }
 
 impl LockFile {
+    /// Read the lock file at `path`.
     pub fn from_file(path: &Path) -> Result<Self> {
         serde_json::from_str(&crate::read(path)?).map_err(|err| Error::Parse {
             path: path.to_path_buf(),
@@ -36,6 +37,8 @@ impl LockFile {
         })
     }
 
+    /// The lock file as written to disk: pretty-printed JSON with a final
+    /// newline.
     pub fn to_json(&self) -> String {
         let mut json = serde_json::to_string_pretty(self).expect("lock file is serializable");
         json.push('\n');
