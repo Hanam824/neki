@@ -1,0 +1,77 @@
+name: Build release archives
+
+# Builds and tests one commit natively on every release platform and uploads an archive per
+# platform (artifacts `neki-<platform>`). Called by release.yml and nightly-release.yml, which
+# then publish the archives.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version written into the build and the archive names, e.g. v0.2.0"
+        required: true
+        type: string
+      sha:
+        description: "Commit to build"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            name: linux-x86_64
+          - runner: macos-latest
+            name: macos-arm64
+          - runner: macos-15-intel # GitHub's Intel macOS runner
+            name: macos-x86_64
+          - runner: windows-latest
+            name: windows-x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash # Git Bash on Windows, for package-release.sh
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # Same shared key as CI: this runs on main, and pull requests can restore caches saved on
+      # main, so new pull requests start with the dependencies already compiled.
+      - name: Build cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install Slint system libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      - name: Build and archive the release
+        id: package
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          archive="$(./scripts/package-release.sh "$VERSION" | tail -n 1)"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: neki-${{ matrix.name }}
+          path: ${{ steps.package.outputs.archive }}
+          if-no-files-found: error

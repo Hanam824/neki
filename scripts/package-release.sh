@@ -4,6 +4,7 @@
 #   ./scripts/package-release.sh v0.1.0
 #     -> dist/neki-v0.1.0-macos-arm64.tar.gz      (macOS, Linux: .tar.gz)
 #     -> dist/neki-v0.1.0-windows-x86_64.zip      (Windows, from Git Bash: .zip)
+#   ./scripts/package-release.sh v0.1.1-nightly.20261021   (a nightly build's version)
 #
 # The archive holds the `neki` CLI, Neki Desktop App (`neki-desktop`), the `neki-shim` launcher,
 # README.md and LICENSE.
