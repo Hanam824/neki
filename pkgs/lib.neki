@@ -249,8 +249,14 @@ rec {
           exec "${zig}/zig" cc -target ${zigTargets.${rust.target}} "$@"
         '';
       } ];
-      # The Windows linker stamps the build time into executables.
-      windowsFlags = if isWindows then ", '-C', 'link-arg=-Wl,--no-insert-timestamp'" else "";
+      # The Windows linker stamps the build time into executables. On Linux,
+      # which crates' compile directories end up in the leftover DWARF
+      # changes from build to build, so the debug sections are dropped (zig
+      # strips the symbols with them).
+      linkFlags =
+        if isWindows then ", '-C', 'link-arg=-Wl,--no-insert-timestamp'"
+        else if isLinux then ", '-C', 'link-arg=-Wl,--strip-debug'"
+        else "";
       targetVar = builtins.replaceStrings [ "-" ] [ "_" ] (lib_upper rust.target);
       linkerEnv = optionalAttrs (zig != null && !isWindows) {
         "CARGO_TARGET_${targetVar}_LINKER" = "${linker}/bin/zig-cc";
@@ -265,7 +271,7 @@ rec {
         # TOML literal strings: Windows paths have backslashes.
         "--config" "source.vendored.directory='${vendor}'"
         # Keep the build directory's path out of the program.
-        "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build'${windowsFlags}]"
+        "--config" "build.rustflags=['--remap-path-prefix=\${NEKI_BUILD_TOP}=/build'${linkFlags}]"
       ] ++ gitConfig) ];
       # Stripping needs LLVM tools that the minimal toolchain doesn't have.
       env = linkerEnv // { CARGO_INCREMENTAL = "0"; CARGO_PROFILE_RELEASE_STRIP = "false"; };
