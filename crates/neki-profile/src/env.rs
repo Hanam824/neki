@@ -37,7 +37,9 @@ pub fn build_env(
             merge(&root, tmp.path())?;
         }
     }
-    let mut candidates: BTreeSet<StorePath> = packages.iter().cloned().collect();
+    // The merged files are the packages' own, so they can mention anything
+    // in the packages' closures.
+    let mut candidates: BTreeSet<StorePath> = store.closure(packages)?;
     candidates.insert(shim.clone());
     Ok(store.add_tree(name, tmp, &candidates)?)
 }
