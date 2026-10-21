@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use crate::{Error, Result, at, http_get};
 
 /// Settings that make a checkout byte-identical on every OS: no line-ending
-/// conversion, and no system or user configuration.
+/// conversion and no system configuration.
 fn git() -> Command {
     let mut cmd = Command::new("git");
     cmd.args(["-c", "core.autocrlf=false", "-c", "core.eol=lf"])
@@ -15,6 +15,28 @@ fn git() -> Command {
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdin(Stdio::null());
     cmd
+}
+
+/// [`git`] without the user's configuration either, for the commands that
+/// write the tree: filters (such as Git LFS), hooks and attributes from it
+/// would make checkouts differ between machines. Fetching keeps it, for
+/// credentials and proxies; the commit hash pins what is fetched. (Git for
+/// Windows reads `/dev/null` as `NUL`.)
+fn isolated_git() -> Command {
+    let mut cmd = git();
+    cmd.env("GIT_CONFIG_GLOBAL", "/dev/null");
+    cmd
+}
+
+/// Reject a URL or ref that git would read as an option.
+fn check_arg<'a>(url: &str, what: &str, value: &'a str) -> Result<&'a str> {
+    if value.starts_with('-') {
+        return Err(Error::Failed {
+            url: url.to_string(),
+            reason: format!("{what} {value:?} starts with `-`"),
+        });
+    }
+    Ok(value)
 }
 
 fn run(url: &str, mut cmd: Command) -> Result<String> {
@@ -38,12 +60,12 @@ fn run(url: &str, mut cmd: Command) -> Result<String> {
 /// The commit that `reference` (a branch or tag; `HEAD` if `None`) points
 /// to in the repository at `url`. A full commit hash is returned as is.
 pub fn git_resolve(url: &str, reference: Option<&str>) -> Result<String> {
-    let reference = reference.unwrap_or("HEAD");
+    let reference = check_arg(url, "ref", reference.unwrap_or("HEAD"))?;
     if is_commit(reference) {
         return Ok(reference.to_string());
     }
     let mut cmd = git();
-    cmd.args(["ls-remote", url, reference]);
+    cmd.args(["ls-remote", "--", check_arg(url, "URL", url)?, reference]);
     let out = run(url, cmd)?;
     // Prefer an exact match, then the peeled commit of an annotated tag.
     let lines: Vec<(&str, &str)> = out
@@ -60,57 +82,97 @@ pub fn git_resolve(url: &str, reference: Option<&str>) -> Result<String> {
         })
 }
 
+/// A full commit hash: SHA-1, or SHA-256 for repositories that use it.
 fn is_commit(s: &str) -> bool {
-    s.len() == 40 && s.bytes().all(|b| b.is_ascii_hexdigit())
+    matches!(s.len(), 40 | 64) && s.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-/// Check out commit `rev` of `url` into the new directory `dest`, without
-/// the `.git` directory.
+/// Check out commit `rev` (a full commit hash) of `url` into the new
+/// directory `dest`, without the `.git` directory.
 pub fn git_checkout(url: &str, rev: &str, dest: &Path) -> Result<()> {
+    check_arg(url, "URL", url)?;
+    if !is_commit(rev) {
+        return Err(Error::Failed {
+            url: url.to_string(),
+            reason: format!("{rev:?} is not a full commit hash"),
+        });
+    }
     std::fs::create_dir(dest).map_err(at(dest))?;
-    let in_dest = |args: &[&str]| {
-        let mut cmd = git();
+    let in_dest = |mut cmd: Command, args: &[&str]| {
         cmd.arg("-C").arg(dest).args(args);
         cmd
     };
-    run(url, in_dest(&["init", "--quiet"]))?;
+    // No templates: they could install hooks.
+    run(
+        url,
+        in_dest(isolated_git(), &["init", "--quiet", "--template="]),
+    )?;
     // Most servers allow fetching a single commit; otherwise fetch everything.
     if run(
         url,
-        in_dest(&["fetch", "--quiet", "--depth", "1", url, rev]),
+        in_dest(git(), &["fetch", "--quiet", "--depth", "1", "--", url, rev]),
     )
     .is_err()
     {
         run(
             url,
-            in_dest(&[
-                "fetch",
-                "--quiet",
-                url,
-                "+refs/heads/*:refs/remotes/origin/*",
-                "+refs/tags/*:refs/tags/*",
-            ]),
+            in_dest(
+                git(),
+                &[
+                    "fetch",
+                    "--quiet",
+                    "--",
+                    url,
+                    "+refs/heads/*:refs/remotes/origin/*",
+                    "+refs/tags/*:refs/tags/*",
+                ],
+            ),
         )?;
     }
     run(
         url,
-        in_dest(&[
-            "-c",
-            "advice.detachedHead=false",
-            "checkout",
-            "--quiet",
-            rev,
-        ]),
+        in_dest(
+            isolated_git(),
+            &[
+                "-c",
+                "advice.detachedHead=false",
+                "checkout",
+                "--quiet",
+                rev,
+            ],
+        ),
     )?;
     // Git only sets executable bits where the OS has them; mark the same
-    // files on every OS so the tree hashes the same.
-    let index = run(url, in_dest(&["ls-files", "--stage", "-z"]))?;
+    // files on every OS so the tree hashes the same. Where the OS has no
+    // symlinks, git writes them as plain files, which would hash
+    // differently, so that fails instead, like unpacking a NAR does.
+    let index = run(url, in_dest(isolated_git(), &["ls-files", "--stage", "-z"]))?;
     for entry in index.split('\0') {
-        if let Some(("100755", rest)) = entry.split_once(' ')
-            && let Some((_, file)) = rest.split_once('\t')
-        {
-            let file = dest.join(file);
-            neki_platform::fs::set_executable(&file).map_err(at(&file))?;
+        let Some((mode, rest)) = entry.split_once(' ') else {
+            continue;
+        };
+        let Some((_, file)) = rest.split_once('\t') else {
+            continue;
+        };
+        let file = dest.join(file);
+        match mode {
+            "100755" => neki_platform::fs::set_executable(&file).map_err(at(&file))?,
+            "120000"
+                if !std::fs::symlink_metadata(&file)
+                    .map_err(at(&file))?
+                    .file_type()
+                    .is_symlink() =>
+            {
+                return Err(Error::Failed {
+                    url: url.to_string(),
+                    reason: format!(
+                        "{} is a symbolic link, and symbolic links in store contents \
+                         aren't supported on this OS yet",
+                        file.display()
+                    ),
+                });
+            }
+            _ => {}
         }
     }
     let git_dir = dest.join(".git");

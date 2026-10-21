@@ -257,6 +257,30 @@ fn entries_differing_only_by_case_are_left_out() {
     neki_nar::dump(&dest, &mut Vec::new()).unwrap();
 }
 
+/// Run git in `repo` (with a committer set), returning its output.
+fn git_in(repo: &Path, args: &[&str]) -> String {
+    let out = std::process::Command::new("git")
+        .arg("-C")
+        .arg(repo)
+        .args([
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "core.autocrlf=false",
+        ])
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    String::from_utf8(out.stdout).unwrap()
+}
+
 /// A local repository with a script committed as executable (set through
 /// the index, so it works where the OS has no executable bit).
 #[test]
@@ -266,28 +290,7 @@ fn git_checkout_marks_executables() {
     fs::create_dir(&repo).unwrap();
     fs::write(repo.join("run.sh"), "echo hi\n").unwrap();
     fs::write(repo.join("README"), "hi\n").unwrap();
-    let git = |args: &[&str]| {
-        let out = std::process::Command::new("git")
-            .arg("-C")
-            .arg(&repo)
-            .args([
-                "-c",
-                "user.name=t",
-                "-c",
-                "user.email=t@t",
-                "-c",
-                "core.autocrlf=false",
-            ])
-            .args(args)
-            .output()
-            .unwrap();
-        assert!(
-            out.status.success(),
-            "{}",
-            String::from_utf8_lossy(&out.stderr)
-        );
-        String::from_utf8(out.stdout).unwrap()
-    };
+    let git = |args: &[&str]| git_in(&repo, args);
     git(&["init", "--quiet"]);
     git(&["add", "run.sh", "README"]);
     git(&["update-index", "--chmod=+x", "run.sh"]);
@@ -304,5 +307,69 @@ fn git_checkout_marks_executables() {
     assert!(is_exec("run.sh"));
     assert!(!is_exec("README"));
     assert!(!dest.join(".git").exists());
+    neki_platform::fs::remove_tree(dir.path()).unwrap();
+}
+
+/// A URL or ref starting with `-` would be read by git as an option (such
+/// as `--upload-pack=<command>`), and a rev must be a commit hash.
+#[test]
+fn git_arguments_are_not_options() {
+    let dir = tempfile::tempdir().unwrap();
+    let marker = dir.path().join("ran");
+    let url = format!("--upload-pack=touch {};false", marker.display());
+    let rev = "0".repeat(40);
+    assert!(git_checkout(&url, &rev, &dir.path().join("a")).is_err());
+    assert!(git_checkout(&url, ".", &dir.path().join("b")).is_err());
+    assert!(git_resolve(&url, None).is_err());
+    assert!(git_resolve(dir.path().to_str().unwrap(), Some("--upload-pack=x")).is_err());
+    assert!(!marker.exists());
+    // Not a commit hash: refused before anything is fetched.
+    let err = git_checkout(dir.path().to_str().unwrap(), "main", &dir.path().join("c"));
+    assert!(err.unwrap_err().to_string().contains("full commit hash"));
+    neki_platform::fs::remove_tree(dir.path()).unwrap();
+}
+
+/// A committed symlink is checked out as a symlink, or, where the OS has
+/// none, fails clearly instead of becoming a plain file.
+#[test]
+fn git_checkout_keeps_or_refuses_symlinks() {
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    fs::create_dir(&repo).unwrap();
+    let git = |args: &[&str]| git_in(&repo, args);
+    git(&["init", "--quiet"]);
+    // Through the index, so the test repo can be made on any OS.
+    let blob = std::process::Command::new("git")
+        .arg("-C")
+        .arg(&repo)
+        .args(["hash-object", "-w", "--stdin"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            child.stdin.take().unwrap().write_all(b"target")?;
+            child.wait_with_output()
+        })
+        .unwrap();
+    let blob = String::from_utf8(blob.stdout).unwrap();
+    git(&[
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        &format!("120000,{},link", blob.trim()),
+    ]);
+    git(&["commit", "--quiet", "-m", "init"]);
+    let rev = git(&["rev-parse", "HEAD"]);
+
+    let dest = dir.path().join("checkout");
+    match git_checkout(repo.to_str().unwrap(), rev.trim(), &dest) {
+        Ok(()) => assert!(
+            fs::symlink_metadata(dest.join("link"))
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        ),
+        Err(err) => assert!(err.to_string().contains("symbolic links"), "{err}"),
+    }
     neki_platform::fs::remove_tree(dir.path()).unwrap();
 }
