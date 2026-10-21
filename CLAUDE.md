@@ -68,6 +68,7 @@ Every feature must behave the same on Windows, macOS and Linux. **All OS-specifi
 - Shared dependency versions are in root `[workspace.dependencies]`; crates use `dep.workspace = true`.
 - Tests that create stores use a temp dir and delete it with `neki_platform::fs::remove_tree` (store entries are read-only), dropping the `LocalStore` first (Windows can't delete open files).
 - New work that isn't done goes in the plan's Future list rather than as stubs in the code.
+- Document code with doc comments ([Rust by Example](https://doc.rust-lang.org/rust-by-example/meta/doc.html)): `///` on functions, types, fields and variants, `//!` at the top of a module or crate, both Markdown. Start with one sentence saying what the item does or is, then what a caller can't see from the signature (what an argument must be, what's returned, when it fails); link items as ``[`LocalStore::lock_path`]``. An example under `# Examples` is a doc test that `cargo test` runs (`cargo test --doc` runs only those). `cargo doc --workspace --no-deps` must build without warnings.
 
 ## Invariants
 
