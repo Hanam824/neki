@@ -7,10 +7,12 @@ use std::process::{Command, Stdio};
 use crate::{Error, Result, at, http_get};
 
 /// Settings that make a checkout byte-identical on every OS: no line-ending
-/// conversion and no system configuration.
+/// conversion, paths longer than Windows' old 260-character limit, and no
+/// system configuration.
 fn git() -> Command {
     let mut cmd = Command::new("git");
     cmd.args(["-c", "core.autocrlf=false", "-c", "core.eol=lf"])
+        .args(["-c", "core.longpaths=true"])
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env("GIT_TERMINAL_PROMPT", "0")
         .stdin(Stdio::null());
@@ -102,11 +104,13 @@ pub fn git_checkout(url: &str, rev: &str, dest: &Path) -> Result<()> {
         cmd.arg("-C").arg(dest).args(args);
         cmd
     };
-    // No templates: they could install hooks.
-    run(
-        url,
-        in_dest(isolated_git(), &["init", "--quiet", "--template="]),
-    )?;
+    // No templates: they could install hooks. The repository must use the
+    // same hash function as the remote.
+    let mut init = vec!["init", "--quiet", "--template="];
+    if rev.len() == 64 {
+        init.push("--object-format=sha256");
+    }
+    run(url, in_dest(isolated_git(), &init))?;
     // Most servers allow fetching a single commit; otherwise fetch everything.
     if run(
         url,
