@@ -365,7 +365,7 @@ impl LocalStore {
                 got: format!("{} ({size} bytes)", got.to_sri()),
             });
         }
-        let _lock = self.lock()?;
+        let _locks = self.install_locks(&info.path)?;
         if !self.is_valid_path(&info.path)? {
             let mut registered = new_info(info.path.clone(), got, size, info.references.clone());
             registered.deriver = info.deriver.clone();

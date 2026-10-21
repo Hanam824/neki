@@ -439,3 +439,30 @@ fn temp_roots_last_while_held() {
     );
     assert_eq!(fs::read_dir(dir).unwrap().count(), 0);
 }
+
+/// An add waits for another holder of the path's lock (a build of it in
+/// another process), so it can't delete what that build is writing.
+#[test]
+fn adds_wait_for_a_build_of_the_same_path() {
+    let t = TestStore::new();
+    let store = t.store();
+    let path = store
+        .store_dir()
+        .make_path("text", &Hash::of_bytes(HashAlgo::Sha256, b"hi"), "a.txt")
+        .unwrap();
+    let held = store.lock_path(&path).unwrap();
+    // What the "build" has written so far.
+    let location = store.store_dir().to_path(&path);
+    fs::write(&location, "partial").unwrap();
+    std::thread::scope(|scope| {
+        let add = scope.spawn(|| store.add_text("a.txt", "hi", &BTreeSet::new()));
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert!(!add.is_finished());
+        assert_eq!(fs::read_to_string(&location).unwrap(), "partial");
+        // The build gave up without registering anything.
+        fs::remove_file(&location).unwrap();
+        drop(held);
+        assert_eq!(add.join().unwrap().unwrap(), path);
+    });
+    assert_eq!(fs::read_to_string(&location).unwrap(), "hi");
+}
