@@ -8,7 +8,7 @@
 mod git;
 mod unpack;
 
-pub use git::{git_checkout, git_resolve, github_resolve, github_tarball_url};
+pub use git::{git_checkout, git_resolve, git_source_files, github_resolve, github_tarball_url};
 pub use unpack::unpack;
 
 use std::fs::File;
@@ -30,6 +30,8 @@ pub enum Error {
     },
     #[error("fetching {url} failed: {reason}")]
     Failed { url: String, reason: String },
+    #[error("listing the files of {} failed: {reason}", dir.display())]
+    SourceFiles { dir: PathBuf, reason: String },
     #[error("{}: {source}", path.display())]
     Io { path: PathBuf, source: io::Error },
     #[error("cannot unpack {}: {reason}", archive.display())]

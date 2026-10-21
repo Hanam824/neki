@@ -16,6 +16,7 @@ use neki_project::{LOCK_FILE, LOCK_VERSION, LockFile, Project};
 use neki_store::{EntryKind, LocalStore, Store};
 
 use crate::inputs::Input;
+use crate::source::SourceFiles;
 use crate::{Error, EventSink, Result};
 
 /// A derivation output: what a package name resolves to.
@@ -336,12 +337,13 @@ impl<'a> Session<'a> {
             }
         }
 
-        // The source, without version control data, build results or
-        // excluded entries. Copied after the inputs are locked, so a
+        // The source, without version control data, build results,
+        // excluded entries or files git ignores. Copied after the inputs are locked, so a
         // `neki.lock` written now is part of it from the first build on.
         self.save_locks()?;
         let src_root = project.root.join(&decl.src);
         let exclude: Vec<PathBuf> = decl.exclude.iter().map(|e| src_root.join(e)).collect();
+        let files = SourceFiles::new(&src_root)?;
         let src =
             self.store
                 .add_path_filtered("source", &src_root, &mut |path, _: EntryKind| {
@@ -350,9 +352,10 @@ impl<'a> Session<'a> {
                         .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_default();
-                    !(file_name == ".git"
-                        || (top && (file_name == "result" || file_name.starts_with("result-")))
-                        || exclude.iter().any(|e| e == path))
+                    files.contains(path)
+                        && !(file_name == ".git"
+                            || (top && (file_name == "result" || file_name.starts_with("result-")))
+                            || exclude.iter().any(|e| e == path))
                 })?;
 
         if let Some(file) = &decl.file {

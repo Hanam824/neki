@@ -5,6 +5,7 @@ mod config;
 mod events;
 mod inputs;
 mod session;
+mod source;
 
 pub use config::{Config, DEFAULT_PKGS};
 pub use events::{Event, EventSink, NullSink};

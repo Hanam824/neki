@@ -15,6 +15,7 @@ use neki_hash::{Hash, StorePath};
 use neki_project::LockedInput;
 use neki_store::{EntryKind, LocalStore, Store};
 
+use crate::source::SourceFiles;
 use crate::{Error, Event, EventSink, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,9 +122,10 @@ impl Input {
         let (path, rev) = match &self.url {
             InputUrl::Path(p) => {
                 let dir = base.join(p);
+                let files = SourceFiles::new(&dir)?;
                 let path =
                     store.add_path_filtered("source", &dir, &mut |entry, _: EntryKind| {
-                        entry.file_name().is_none_or(|n| n != ".git")
+                        files.contains(entry) && entry.file_name().is_none_or(|n| n != ".git")
                     })?;
                 (path, None)
             }

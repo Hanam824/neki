@@ -543,3 +543,60 @@ fn evaluation_keeps_the_garbage_collector_away() {
         std::thread::sleep(Duration::from_millis(20));
     }
 }
+
+/// In a git work tree, sources (the project's and `path:` inputs) are what
+/// git lists: tracked files and untracked ones that aren't ignored.
+#[test]
+fn sources_leave_out_what_git_ignores() {
+    let env = Env::new();
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&env.root)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    };
+    git(&["init", "--quiet"]);
+    fs::write(
+        env.root.join(".gitignore"),
+        "target/\njunk\n/store/\n/var/\n",
+    )
+    .unwrap();
+    let app = env.root.join("app");
+    fs::create_dir(app.join("target")).unwrap();
+    fs::write(app.join("target/out"), "1").unwrap();
+    fs::write(env.root.join("pkgs/junk"), "1").unwrap();
+    fs::write(app.join("new.txt"), "untracked").unwrap();
+
+    let out = env.neki.build(&env.project(), None, &NullSink).unwrap();
+    let store = env.neki.store().unwrap();
+    let drv = store
+        .query_path_info(&out[0])
+        .unwrap()
+        .unwrap()
+        .deriver
+        .unwrap();
+    let src = PathBuf::from(&store.read_derivation(&drv).unwrap().env["src"]);
+    assert!(src.join("main.txt").is_file() && src.join("new.txt").is_file());
+    assert!(!src.join("target").exists() && !src.join("ignored.txt").exists());
+    let sources: Vec<PathBuf> = fs::read_dir(&env.neki.config().store_dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.to_string_lossy().ends_with("-source"))
+        .collect();
+    assert!(sources.iter().any(|p| p.join("default.neki").is_file()));
+    assert!(sources.iter().all(|p| !p.join("junk").exists()));
+
+    // Ignored files don't change the source.
+    fs::write(app.join("target/out"), "2").unwrap();
+    assert_eq!(
+        env.neki.build(&env.project(), None, &NullSink).unwrap(),
+        out
+    );
+}
