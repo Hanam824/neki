@@ -302,9 +302,16 @@ impl LocalStore {
         }
         let _locks = self.install_locks(path)?;
         let dest = self.dir.to_path(path);
-        neki_platform::fs::remove_tree(&dest).map_err(at(&dest))?;
-        fs::rename(fixed, &dest).map_err(at(&dest))?;
-        make_readonly(&dest)
+        // Move the damaged copy aside first, so the path is never missing:
+        // if the replacement can't be moved in, the old copy goes back.
+        let old = self.temp_path();
+        fs::rename(&dest, &old).map_err(at(&dest))?;
+        if let Err(err) = fs::rename(fixed, &dest) {
+            let _ = fs::rename(&old, &dest);
+            return Err(at(&dest)(err));
+        }
+        make_readonly(&dest)?;
+        neki_platform::fs::remove_tree(&old).map_err(at(&old))
     }
 
     /// Delete whatever is at the location of `path`, which must not be

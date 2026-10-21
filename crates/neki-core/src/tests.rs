@@ -460,6 +460,13 @@ fn repair_rebuilds_or_downloads_modified_paths() {
     assert_eq!(fs::read(&program).unwrap(), original);
     assert!(env.neki.verify().unwrap().is_empty());
     assert!(fs::metadata(&program).unwrap().permissions().readonly());
+    // The damaged copy was moved aside, then deleted.
+    let leftovers = fs::read_dir(&env.neki.config().store_dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|n| n.starts_with('.'))
+        .collect::<Vec<_>>();
+    assert!(leftovers.is_empty(), "{leftovers:?}");
 
     // Downloaded from a binary cache, which is tried first.
     let key = env.neki.cache_keygen("repair-1").unwrap();
