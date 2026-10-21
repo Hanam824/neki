@@ -41,6 +41,7 @@ impl LocalStore {
         })
     }
 
+    /// The directory with the database, locks, roots, logs and profiles.
     pub fn state_dir(&self) -> &Path {
         &self.state_dir
     }
@@ -259,6 +260,7 @@ impl LocalStore {
         db::valid_paths(&self.db())
     }
 
+    /// Read and parse the derivation stored at the valid `.drv` path `path`.
     pub fn read_derivation(&self, path: &StorePath) -> Result<Derivation> {
         if !self.is_valid_path(path)? {
             return Err(Error::NotValid(path.to_string()));
@@ -457,6 +459,7 @@ fn copy_filtered(
 pub struct TempEntry(PathBuf);
 
 impl TempEntry {
+    /// Where the entry is, in the store directory.
     pub fn path(&self) -> &Path {
         &self.0
     }

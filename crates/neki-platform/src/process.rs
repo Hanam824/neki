@@ -22,14 +22,17 @@ pub fn spawn_tree(cmd: Command) -> io::Result<ProcessTree> {
 }
 
 impl ProcessTree {
+    /// The OS process ID of the root process.
     pub fn id(&self) -> u32 {
         self.0.id()
     }
 
+    /// The root process's standard output, if it was piped and not taken yet.
     pub fn take_stdout(&mut self) -> Option<ChildStdout> {
         self.0.stdout().take()
     }
 
+    /// The root process's standard error, if it was piped and not taken yet.
     pub fn take_stderr(&mut self) -> Option<ChildStderr> {
         self.0.stderr().take()
     }

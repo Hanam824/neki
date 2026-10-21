@@ -15,10 +15,13 @@ pub const MAX_NAME_LEN: usize = 211;
 pub struct StoreDir(PathBuf);
 
 impl StoreDir {
+    /// The store directory at `path`. It isn't created or checked; changing
+    /// it changes every store path hash.
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self(path.into())
     }
 
+    /// The directory, as given to [`StoreDir::new`].
     pub fn path(&self) -> &Path {
         &self.0
     }
@@ -129,6 +132,7 @@ impl StorePath {
         })
     }
 
+    /// The 20-byte hash in the path's name, as raw bytes.
     pub fn digest(&self) -> &[u8; HASH_LEN] {
         &self.digest
     }
@@ -138,6 +142,7 @@ impl StorePath {
         base32::encode(&self.digest)
     }
 
+    /// The name after `<hash>-`, such as `hello-1.0` or `foo.drv`.
     pub fn name(&self) -> &str {
         &self.name
     }

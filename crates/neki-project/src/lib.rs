@@ -43,6 +43,8 @@ impl Project {
             .map_or_else(|| Err(Error::NotFound(start.to_path_buf())), Self::load)
     }
 
+    /// Load the project whose `neki.toml` is in `root`, with its `neki.lock`
+    /// if there is one. Fails if either file can't be read or parsed.
     pub fn load(root: &Path) -> Result<Self> {
         let manifest = Manifest::from_file(&root.join(MANIFEST_FILE))?;
         let lock_path = root.join(LOCK_FILE);

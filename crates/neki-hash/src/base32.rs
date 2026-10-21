@@ -17,6 +17,14 @@ pub const fn encoded_len(bytes: usize) -> usize {
     }
 }
 
+/// Encode `bytes` in Nix base32, [`encoded_len`] characters long.
+///
+/// # Examples
+///
+/// ```
+/// use neki_hash::base32;
+/// assert_eq!(base32::encode(&[0x1f]), "0z");
+/// ```
 pub fn encode(bytes: &[u8]) -> String {
     (0..encoded_len(bytes.len()))
         .rev()
@@ -29,6 +37,16 @@ pub fn encode(bytes: &[u8]) -> String {
         .collect()
 }
 
+/// Decode the Nix base32 string `s`. Fails on characters outside
+/// [`ALPHABET`] and on bits left over past the last byte.
+///
+/// # Examples
+///
+/// ```
+/// use neki_hash::base32;
+/// assert_eq!(base32::decode("0z").unwrap(), [0x1f]);
+/// assert!(base32::decode("0e").is_err());
+/// ```
 pub fn decode(s: &str) -> Result<Vec<u8>> {
     let invalid = || Error::InvalidHash(format!("invalid base32: {s:?}"));
     let mut out = vec![0u8; s.len() * 5 / 8];

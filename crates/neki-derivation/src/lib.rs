@@ -64,6 +64,9 @@ impl Derivation {
             .ok_or_else(|| Error::Invalid("no `name` in the environment".into()))
     }
 
+    /// The derivation as ATerm text, the contents of its `.drv` file, with
+    /// paths written in full under `store`. Fails on a fixed output when
+    /// the environment has no `name`, which its path needs.
     pub fn to_aterm(&self, store: &StoreDir) -> Result<String> {
         let inputs = self
             .input_drvs
@@ -109,6 +112,9 @@ impl Derivation {
         }))
     }
 
+    /// Parse the contents of a `.drv` file, the inverse of
+    /// [`Derivation::to_aterm`]. Fails on malformed text and on paths that
+    /// aren't under `store`.
     pub fn parse_aterm(s: &str, store: &StoreDir) -> Result<Self> {
         let parts = aterm::parse(s)?;
         let path = |p: &str| Ok::<_, Error>(store.parse_path(std::path::Path::new(p))?);
@@ -268,6 +274,8 @@ impl Derivation {
         )?)
     }
 
+    /// Whether this is a fixed-output derivation: a single `out` output
+    /// whose hash is given in advance, such as a download.
     pub fn is_fixed_output(&self) -> bool {
         self.fixed_output().is_some()
     }

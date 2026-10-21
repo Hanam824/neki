@@ -47,6 +47,7 @@ pub enum Value {
 }
 
 impl Value {
+    /// A string with no context: it refers to no store paths.
     pub fn string(s: impl Into<String>) -> Self {
         Value::String {
             s: s.into(),
@@ -54,6 +55,7 @@ impl Value {
         }
     }
 
+    /// The type's name as error messages and `builtins.typeOf` show it.
     pub fn type_name(&self) -> &'static str {
         match self {
             Value::Null => "null",
@@ -68,10 +70,12 @@ impl Value {
         }
     }
 
+    /// An attribute set holding `map`.
     pub fn attrs(map: Attrs) -> Self {
         Value::Attrs(Rc::new(map))
     }
 
+    /// A list of `items`, which stay unevaluated until used.
     pub fn list(items: Vec<Thunk>) -> Self {
         Value::List(Rc::new(items))
     }
@@ -110,6 +114,7 @@ pub(crate) enum State {
 }
 
 impl Thunk {
+    /// A thunk that is already evaluated to `v`.
     pub fn value(v: Value) -> Self {
         Thunk(Rc::new(RefCell::new(State::Done(v))))
     }

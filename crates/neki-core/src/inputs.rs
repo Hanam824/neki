@@ -42,6 +42,19 @@ pub struct Input {
 }
 
 impl Input {
+    /// Parse an input URL: `path:<dir>`, `github:<owner>/<repo>[/<ref>]`,
+    /// `git+<url>` or an archive URL, each with optional `?dir=<subdir>`
+    /// (and `?ref=` / `?rev=` for git).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use neki_core::{Input, InputUrl};
+    /// let input = Input::parse("github:Hanam824/neki?dir=pkgs").unwrap();
+    /// assert_eq!(input.dir.as_deref(), Some("pkgs"));
+    /// assert!(matches!(input.url, InputUrl::GitHub { reference: None, .. }));
+    /// assert!(Input::parse("path:../pkgs?bogus=1").is_err());
+    /// ```
     pub fn parse(s: &str) -> Result<Self> {
         let bad = |why: &str| Error::Input(format!("{s}: {why}"));
         let (base, query) = match s.split_once('?') {

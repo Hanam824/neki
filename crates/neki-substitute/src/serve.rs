@@ -29,6 +29,8 @@ impl CacheServer {
         Ok(Self { server })
     }
 
+    /// The address the server listens on, with the actual port when it was
+    /// bound to port 0.
     pub fn addr(&self) -> Option<SocketAddr> {
         self.server.server_addr().to_ip()
     }
