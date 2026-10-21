@@ -224,6 +224,15 @@ fn untar(reader: impl Read, dest: &Path, names: &mut Names) -> Result<(), Unpack
                     Unpacking::Bad(format!("hard link {} has no target", name.display()))
                 })?;
                 let source = entry_path(dest, &target)?;
+                // Copying follows symlinks, so a link to one made by an
+                // earlier entry could copy a file from outside `dest`.
+                if !fs::symlink_metadata(&source).is_ok_and(|m| m.is_file()) {
+                    return Err(Unpacking::Bad(format!(
+                        "hard link {}: target {} isn't a file earlier in the archive",
+                        name.display(),
+                        target.display()
+                    )));
+                }
                 prepare(&path)?;
                 fs::copy(&source, &path)?;
             }

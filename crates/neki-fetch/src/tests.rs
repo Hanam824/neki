@@ -220,6 +220,48 @@ fn unpack_rejects_unsafe_entries() {
     assert!(unpack(&archive, &env.dir.path().join("two"), true).is_err());
 }
 
+/// A hard link is unpacked as a copy of its target, which must be a file
+/// from the archive itself, not something a symlink in it points to.
+#[test]
+fn hard_links_copy_only_files_from_the_archive() {
+    let env = Env::new();
+    let secret = env.file("secret", b"secret");
+    let entry = |kind, name: &str, target: &Path| {
+        let mut header = tar::Header::new_gnu();
+        header.set_entry_type(kind);
+        header.set_size(0);
+        header.set_mode(0o644);
+        header.set_path(name).unwrap();
+        header.set_link_name(target).unwrap();
+        header.set_cksum();
+        header
+    };
+
+    let mut builder = tar::Builder::new(Vec::new());
+    let mut file = tar::Header::new_gnu();
+    file.set_size(2);
+    file.set_mode(0o644);
+    file.set_cksum();
+    builder.append_data(&mut file, "file", &b"ok"[..]).unwrap();
+    let link = entry(tar::EntryType::Link, "copy", Path::new("file"));
+    builder.append(&link, &b""[..]).unwrap();
+    let archive = env.file("good.tar", &builder.into_inner().unwrap());
+    let dest = env.dir.path().join("good");
+    unpack(&archive, &dest, false).unwrap();
+    assert_eq!(fs::read(dest.join("copy")).unwrap(), b"ok");
+
+    let mut builder = tar::Builder::new(Vec::new());
+    let symlink = entry(tar::EntryType::Symlink, "out", &secret);
+    builder.append(&symlink, &b""[..]).unwrap();
+    let link = entry(tar::EntryType::Link, "copy", Path::new("out"));
+    builder.append(&link, &b""[..]).unwrap();
+    let archive = env.file("bad.tar", &builder.into_inner().unwrap());
+    let dest = env.dir.path().join("bad");
+    // (On Windows the symlink entry itself is refused.)
+    assert!(unpack(&archive, &dest, false).is_err());
+    assert!(!dest.exists());
+}
+
 #[test]
 fn unpacks_xz() {
     let env = Env::new();
