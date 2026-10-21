@@ -531,6 +531,15 @@ fn evaluation_keeps_the_garbage_collector_away() {
             Ok(())
         })
         .unwrap();
-    // Free again afterwards.
-    fs::File::open(&gc_lock).unwrap().try_lock().unwrap();
+    // Free again afterwards. A process another test forks at that moment
+    // shares the lock until it execs, so allow it a little time.
+    let file = fs::File::open(&gc_lock).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while let Err(err) = file.try_lock() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "gc.lock still held: {err}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
 }
