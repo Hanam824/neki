@@ -2,7 +2,8 @@ name: Build release archives
 
 # Builds and tests one commit natively on every release platform and uploads an archive per
 # platform (artifacts `neki-<platform>`). Called by release.yml and nightly-release.yml, which
-# then publish the archives.
+# then publish the archives. The Apple Silicon archive is also run on macOS 15, the oldest
+# macOS Neki supports.
 on:
   workflow_call:
     inputs:
@@ -75,3 +76,38 @@ jobs:
           name: neki-${{ matrix.name }}
           path: ${{ steps.package.outputs.archive }}
           if-no-files-found: error
+
+  # The Apple Silicon archive is built on macos-latest, a newer macOS than the oldest one Neki
+  # supports: check that it unpacks and runs on macOS 15. Nothing is built here.
+  run-on-macos-15:
+    name: Run macos-arm64 on macOS 15
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - name: Download the archive
+        uses: actions/download-artifact@v4
+        with:
+          name: neki-macos-arm64
+
+      - name: Unpack and run
+        env:
+          NEKI_STORE_DIR: ${{ runner.temp }}/store
+          NEKI_STATE_DIR: ${{ runner.temp }}/var
+        run: |
+          sw_vers
+          tar -xzf neki-*-macos-arm64.tar.gz
+          cd neki-*-macos-arm64
+          ./neki --version
+          ./neki eval '1 + 1'
+          # Without a .shim file next to it, neki-shim starts and exits with 127; a binary that
+          # can't load on this macOS fails differently.
+          status=0
+          ./neki-shim || status=$?
+          [ "$status" = 127 ]
+          # The desktop app starts and is still running after a few seconds.
+          ./neki-desktop &
+          pid=$!
+          sleep 5
+          kill -0 "$pid"
+          kill "$pid"
