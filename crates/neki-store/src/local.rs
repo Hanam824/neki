@@ -307,9 +307,21 @@ impl LocalStore {
         // Move the damaged copy aside first, so the path is never missing:
         // if the replacement can't be moved in, the old copy goes back.
         let old = self.temp_path();
-        fs::rename(&dest, &old).map_err(at(&dest))?;
-        if let Err(err) = fs::rename(fixed, &dest) {
-            let _ = fs::rename(&old, &dest);
+        // macOS 15 won't rename a read-only directory, so make the damaged
+        // copy writable first (not through a symlink: that would change its target).
+        let is_dir = fs::symlink_metadata(&dest).map_err(at(&dest))?.is_dir();
+        if is_dir {
+            neki_platform::fs::set_readonly(&dest, false).map_err(at(&dest))?;
+        }
+        let moved = fs::rename(&dest, &old).and_then(|()| {
+            fs::rename(fixed, &dest).inspect_err(|_| {
+                let _ = fs::rename(&old, &dest);
+            })
+        });
+        if let Err(err) = moved {
+            if is_dir {
+                let _ = neki_platform::fs::set_readonly(&dest, true);
+            }
             return Err(at(&dest)(err));
         }
         make_readonly(&dest)?;

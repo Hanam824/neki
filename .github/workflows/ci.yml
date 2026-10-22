@@ -55,10 +55,12 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     # Every supported OS in parallel. fail-fast off: one failing doesn't cancel the others.
+    # macos-15-intel is the oldest macOS Neki supports and GitHub runs, and the only
+    # Intel one, as in the release builds.
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, macos-15-intel, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:

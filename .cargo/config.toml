@@ -1,0 +1,5 @@
+# Applies to every build of this workspace: local, CI and release.
+[env]
+# The oldest macOS Neki supports (rustc, the linker and C code built by build scripts all read it).
+# Other OSes ignore it. scripts/package-release.sh checks the release binaries against it.
+MACOSX_DEPLOYMENT_TARGET = "15.0"
