@@ -56,6 +56,17 @@ sed -i.bak "s/^version = \".*\"/version = \"${version#v}\"/" Cargo.toml
 rm Cargo.toml.bak
 cargo build --release -p neki-cli -p neki-gui -p neki-shim >&2
 
+# The macOS binaries must run on macOS 15 (MACOSX_DEPLOYMENT_TARGET in .cargo/config.toml).
+if [ "$os" = macos ]; then
+    for bin in neki neki-desktop neki-shim; do
+        minos="$(otool -l "target/release/$bin" | awk '$1 == "minos" { print $2; exit }')"
+        if [ "$minos" != 15.0 ]; then
+            echo "$bin needs macOS ${minos:-(unknown)}, not 15.0" >&2
+            exit 1
+        fi
+    done
+fi
+
 name="neki-$version-$os-$arch"
 rm -rf "dist/$name" "dist/$name.zip" "dist/$name.tar.gz"
 mkdir -p "dist/$name"
