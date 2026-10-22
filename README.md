@@ -18,7 +18,7 @@ It follows [Nix](https://nixos.org/guides/how-nix-works/)'s design: packages liv
 
 ## Build from source
 
-You need a stable [Rust toolchain](https://rustup.rs/) (1.89 or newer). On Linux, the desktop app also needs `libfontconfig1-dev` and `libxkbcommon-dev` (Debian/Ubuntu package names).
+You need a stable [Rust toolchain](https://rustup.rs/) (1.89 or newer; on Windows, `winget install Rustlang.Rustup`). On Windows, Rust also needs the MSVC C++ build tools (Visual Studio or Build Tools, "Desktop development with C++"). On Linux, the desktop app also needs `libfontconfig1-dev` and `libxkbcommon-dev` (Debian/Ubuntu package names).
 
 ```sh
 git clone https://github.com/Hanam824/neki.git
@@ -164,6 +164,33 @@ examples/           sample projects
 docs/PLAN.md        design, cross-platform decisions and roadmap
 scripts/            release, CI and package-set helpers
 ```
+
+## Development
+
+Build and test everything, then run the programs from source:
+
+```sh
+cargo build --workspace            # also builds neki-shim next to neki in target/debug/
+cargo test --workspace
+cargo test -p neki-nar             # one crate
+cargo run -p neki-cli -- --help    # the `neki` command
+cargo run -p neki-gui              # Neki Desktop App (the first build compiles Slint and takes a few minutes)
+```
+
+To try real builds without touching the default store, point Neki at a scratch one:
+
+```sh
+# macOS and Linux
+NEKI_STORE_DIR=/tmp/s/store NEKI_STATE_DIR=/tmp/s/var cargo run -p neki-cli -- -C examples/node-app build
+```
+
+```powershell
+# Windows (PowerShell)
+$env:NEKI_STORE_DIR="$env:TEMP\s\store"; $env:NEKI_STATE_DIR="$env:TEMP\s\var"
+cargo run -p neki-cli -- -C examples/node-app build
+```
+
+Building a package downloads it. `develop`, `shell` and profiles need `neki-shim`, which Neki looks for next to `neki` or in `NEKI_SHIM`. [`docs/PLAN.md`](docs/PLAN.md) explains the design; read it before changing a core format.
 
 ## Contributing
 
